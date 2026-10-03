@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+  <meta name="theme-color" content="#0A0A0F">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <title>Recomposition</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- RECOMPOSITION SPLASH -->
+<div id="recomposition-splash">
+
+  <div class="splash-content">
+
+    <div class="splash-logo">
+      R
+    </div>
+
+    <div class="splash-name">
+      RECOMPOSITION
+    </div>
+
+    <div class="splash-tagline">
+      TRAIN. TRACK. RECOMPOSE.
+    </div>
+
+  </div>
+
+</div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       AUTHENTICATION SCREEN
+  ═══════════════════════════════════════════════════════════════════════ -->
+
+  <div id="auth-screen" class="auth-screen">
+
+    <div class="auth-card">
+
+      <div class="auth-logo">
+        RECOMPOSITION
+      </div>
+
+      <div class="auth-subtitle">
+        TRAIN. TRACK. REBUILD.
+      </div>
+
+
+      <!-- LOGIN FORM -->
+      <div id="login-form" class="auth-form">
+
+        <h1>Welcome Back</h1>
+
+        <p class="auth-description">
+          Sign in to continue your training.
+        </p>
+
+
+        <label for="login-email">
+          EMAIL
+        </label>
+
+        <input
+          type="email"
+          id="login-email"
+          placeholder="you@example.com"
+          autocomplete="email"
+        >
+
+
+        <label for="login-password">
+          PASSWORD
+        </label>
+
+        <input
+          type="password"
+          id="login-password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+        >
+
+
+        <button
+          type="button"
+          id="btn-login"
+          class="auth-primary"
+        >
+          SIGN IN
+        </button>
+
+
+        <button
+          type="button"
+          id="btn-google-login"
+          class="auth-google"
+        >
+          CONTINUE WITH GOOGLE
+        </button>
+
+
+        <button
+          type="button"
+          id="btn-forgot-password"
+          class="auth-link"
+        >
+          Forgot password?
+        </button>
+
+
+        <div class="auth-divider">
+          <span>NEW TO RECOMPOSITION?</span>
+        </div>
+
+
+        <button
+          type="button"
+          id="btn-show-register"
+          class="auth-secondary"
+        >
+          CREATE ACCOUNT
+        </button>
+
+      </div>
+
+
+      <!-- REGISTER FORM -->
+      <div
+        id="register-form"
+        class="auth-form hidden"
+      >
+
+        <h1>Create Account</h1>
+
+        <p class="auth-description">
+          Start building your training history.
+        </p>
+
+
+        <label for="register-name">
+          NAME
+        </label>
+
+        <input
+          type="text"
+          id="register-name"
+          placeholder="Your name"
+          autocomplete="name"
+        >
+
+
+        <label for="register-email">
+          EMAIL
+        </label>
+
+        <input
+          type="email"
+          id="register-email"
+          placeholder="you@example.com"
+          autocomplete="email"
+        >
+
+
+        <label for="register-password">
+          PASSWORD
+        </label>
+
+        <input
+          type="password"
+          id="register-password"
+          placeholder="At least 6 characters"
+          autocomplete="new-password"
+        >
+
+
+        <label for="register-password-confirm">
+          CONFIRM PASSWORD
+        </label>
+
+        <input
+          type="password"
+          id="register-password-confirm"
+          placeholder="Repeat your password"
+          autocomplete="new-password"
+        >
+
+
+        <button
+          type="button"
+          id="btn-register"
+          class="auth-primary"
+        >
+          CREATE ACCOUNT
+        </button>
+
+
+        <button
+          type="button"
+          id="btn-show-login"
+          class="auth-link"
+        >
+          Already have an account? Sign in
+        </button>
+
+      </div>
+
+
+      <div
+        id="auth-message"
+        class="auth-message"
+      ></div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       RECOMPOSITION APPLICATION
+  ═══════════════════════════════════════════════════════════════════════ -->
+
+  <div
+    id="recomposition-app"
+    class="app-shell"
+  >
+
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         TOP BAR
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <header class="topbar">
+
+      <div class="topbar-brand">
+
+        <div class="topbar-mark">
+          R
+        </div>
+
+        <div class="topbar-brand-text">
+
+          <span class="topbar-title">
+            RECOMPOSITION
+          </span>
+
+          <span class="topbar-subtitle">
+            TRAIN. TRACK. REBUILD.
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="topbar-right">
+
+        <span
+          id="topbar-date"
+          class="topbar-date"
+        ></span>
+
+      </div>
+
+    </header>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         MAIN CONTENT
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <main class="main-content">
+
+
+      <!-- DASHBOARD -->
+
+      <section
+        id="section-dashboard"
+        class="app-section active"
+      >
+
+        <div id="dashboard-content">
+
+          <div class="loading-row">
+            Loading...
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- WORKOUT -->
+
+      <section
+        id="section-workout"
+        class="app-section"
+      >
+
+        <div id="workout-content">
+
+          <div class="loading-row">
+            Loading...
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- HISTORY -->
+
+      <section
+  id="section-history"
+  class="app-section"
+>
+
+  <div class="section-header">
+    <div>
+      <div class="section-eyebrow">
+        TRAINING RECORD
+      </div>
+
+      <h2>
+        Workout History
+      </h2>
+
+      <p>
+        Review your completed training sessions.
+      </p>
+    </div>
+  </div>
+
+  <div id="history-content">
+    <div class="history-loading">
+      Loading workout history...
+    </div>
+  </div>
+
+</section>
+
+
+      <!-- PROGRESS -->
+
+      <section
+        id="section-progress"
+        class="app-section"
+      >
+
+        <div id="progress-content">
+
+          <div class="loading-row">
+            Loading...
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- SETTINGS -->
+
+      <section
+        id="section-settings"
+        class="app-section"
+      >
+
+        <div id="settings-content">
+
+          <div class="loading-row">
+            Loading...
+          </div>
+
+        </div>
+
+      </section>
+
+
+    </main>
+
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         BOTTOM NAVIGATION
+    ════════════════════════════════════════════════════════════════════ -->
+
+    <nav
+      id="bottom-nav"
+      class="bottom-nav"
+    >
+
+
+      <button
+        type="button"
+        class="nav-btn active"
+        id="nav-dashboard"
+        data-section="dashboard"
+      >
+
+        <span class="nav-icon">
+          ⌂
+        </span>
+
+        <span class="nav-label">
+          Dashboard
+        </span>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="nav-btn"
+        id="nav-workout"
+        data-section="workout"
+      >
+
+        <span class="nav-icon">
+          ◈
+        </span>
+
+        <span class="nav-label">
+          Workout
+        </span>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="nav-btn"
+        id="nav-history"
+        data-section="history"
+      >
+
+        <span class="nav-icon">
+          ▤
+        </span>
+
+        <span class="nav-label">
+          History
+        </span>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="nav-btn"
+        id="nav-progress"
+        data-section="progress"
+      >
+
+        <span class="nav-icon">
+          ↗
+        </span>
+
+        <span class="nav-label">
+          Progress
+        </span>
+
+      </button>
+
+      <button
+  type="button"
+  class="nav-btn"
+  id="nav-settings"
+  data-section="settings"
+>
+
+  <span class="nav-icon">
+    ⚙
+  </span>
+
+  <span class="nav-label">
+    Settings
+  </span>
+
+</button>
+
+
+
+    </nav>
+
+
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       GLOBAL TOAST
+  ═══════════════════════════════════════════════════════════════════════ -->
+
+  <div id="toast"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       DATE
+  ═══════════════════════════════════════════════════════════════════════ -->
+
+  <script>
+
+    const topbarDate = document.getElementById("topbar-date");
+
+    if (topbarDate) {
+
+      topbarDate.textContent =
+        new Date().toLocaleDateString(
+          "en-IN",
+          {
+            weekday: "short",
+            day: "numeric",
+            month: "short"
+          }
+        );
+
+    }
+
+  </script>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       RECOMPOSITION NAVIGATION
+  ═══════════════════════════════════════════════════════════════════════ -->
+<script
+  src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"
+></script>
+
+  <script
+    type="module"
+    src="navigation.js"
+  ></script>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       FIREBASE AUTHENTICATION
+  ═══════════════════════════════════════════════════════════════════════ -->
+
+  <script
+  type="module"
+  src="dashboard.js"
+  ></script>
+
+  <script
+  type="module"
+  src="profile.js"
+  ></script>
+
+
+  <script
+  type="module"
+  src="workout.js"
+  ></script>
+
+  <script 
+  type="module" 
+  src="logWorkout.js"
+  ></script>
+
+  <script 
+  type="module" 
+  src="./history.js"
+  ></script>
+
+  <script
+  type="module"
+  src="progress.js"
+  ></script>
+
+  <script
+  type="module"
+  src="goals.js"
+  ></script>
+
+  <script
+    type="module"
+    src="auth.js"
+  ></script>
+
+  <script
+  type="module"
+  src="settings.js"
+  ></script>
+
+  
+
+<script>
+  window.addEventListener("load", () => {
+
+    setTimeout(() => {
+
+      const splash =
+        document.getElementById(
+          "recomposition-splash"
+        );
+
+      if (splash) {
+        splash.classList.add("splash-hidden");
+      }
+
+    }, 700);
+
+  });
+</script>
+
+</body>
+</html>
