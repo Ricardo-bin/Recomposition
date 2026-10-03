@@ -13,7 +13,6 @@ import {
 import {
   calculateNutritionRecommendation,
   buildNutritionInput,
-  pickCurrentWeightKg,
   buildAppliedNutritionFields,
   recommendationMatchesGoal,
   resolveNutritionSource,
@@ -24,6 +23,10 @@ import {
   formatWeight,
   normalizeWeightUnit
 } from "./units.js";
+
+import {
+  resolveCurrentWeight
+} from "./currentWeight.js";
 
 
 // ============================================================================
@@ -733,7 +736,7 @@ async function loadNutritionContext() {
 
     return {
       profile,
-      weight: pickCurrentWeightKg(weightHistory, profile?.currentWeight),
+      weight: resolveCurrentWeight(weightHistory, profile?.currentWeight),
       unit: normalizeWeightUnit(profile?.unitPreference)
     };
   } catch (error) {

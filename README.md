@@ -22,6 +22,7 @@ Recomposition/
 ├── profile.js
 ├── goals.js              goals + nutrition recommendation / apply
 ├── nutritionEngine.js    pure nutrition calculator (no DOM, no Firebase)
+├── currentWeight.js      the one resolver for "current weight" (from Weight History)
 ├── units.js              weight unit helpers (kg / lb)
 ├── exercisePicker.js     pure plan-exercise <-> library link helpers
 ├── exercisePickerUI.js   the inline exercise picker (DOM)
@@ -46,20 +47,21 @@ Main navigation: **Dashboard · Workout · History · Progress · Settings**.
   Goals, Export & Backup.
 - **Workout** owns plans; **History** owns completed logs.
 
-| Module | Responsibility |
-|---|---|
-| `auth.js` | Email/password and Google sign-in, password reset, profile creation (keeps the registration name). |
-| `navigation.js` | Main navigation. |
-| `dashboard.js` | Today's workout (with completed state), current weight, active goal, recent training. |
-| `workout.js` | Workout **plans**: weekly schedule and exercise editor (with the exercise picker). |
-| `logWorkout.js` | The active **session** (sets, weight, reps, RIR, previous performance) and saving the **log**. |
-| `history.js` | Completed logs: search, filter, view, edit, delete, "Load older workouts". |
-| `progress.js` | Read-only analytics. |
-| `settings.js` | Settings hub and sub-pages; exports (JSON, CSV, Excel). |
-| `profile.js` | Profile form (opened from Settings → Profile). |
-| `goals.js` | Goals and nutrition targets (Settings → Goals), including the recommendation review / Apply flow. |
-| `nutritionEngine.js` | Pure calculator: profile + current weight + goal type → recommended calories and macros. |
-| `data/recompositionData.js` | All Firestore access, scoped to the signed-in user. |
+| Module                      | Responsibility                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `auth.js`                   | Email/password and Google sign-in, password reset, profile creation (keeps the registration name).      |
+| `navigation.js`             | Main navigation.                                                                                        |
+| `dashboard.js`              | Today's workout (with completed state), current weight, active goal, recent training.                   |
+| `workout.js`                | Workout **plans**: weekly schedule and exercise editor (with the exercise picker).                      |
+| `logWorkout.js`             | The active **session** (sets, weight, reps, RIR, previous performance) and saving the **log**.          |
+| `history.js`                | Completed logs: search, filter, view, edit, delete, "Load older workouts".                              |
+| `progress.js`               | Read-only analytics.                                                                                    |
+| `settings.js`               | Settings hub and sub-pages; exports (JSON, CSV, Excel).                                                 |
+| `profile.js`                | Profile form (Settings → Profile). Shows the current weight read-only; it is managed in Weight History. |
+| `goals.js`                  | Goals and nutrition targets (Settings → Goals), including the recommendation review / Apply flow.       |
+| `nutritionEngine.js`        | Pure calculator: profile + current weight + goal type → recommended calories and macros.                |
+| `currentWeight.js`          | Resolves the current body weight from Weight History (used by Profile, Dashboard and Goals).            |
+| `data/recompositionData.js` | All Firestore access, scoped to the signed-in user.                                                     |
 
 **Plan / Session / Log** stay separate: a **plan** is what you intend to train; the **session** is the workout
 in progress; the **log** is what you actually did. History reads logs, never plans.
@@ -83,15 +85,33 @@ Workout logs are read in pages, newest first (`getWorkoutLogsPage`, page size 10
 
 Not paged: `getWeightHistory()` returns the latest 365 entries and `getMeasurements()` the latest 100.
 
+### Current weight (source of truth)
+
+**Weight History is the only source of truth for body weight.** There is no second, editable "current weight".
+
+```text
+latest valid Weight History entry -> Current Weight -> Profile (read-only), Dashboard, Nutrition (Goals)
+```
+
+- `currentWeight.js` (`resolveCurrentWeight`) is the single resolver every screen uses, so they cannot disagree.
+- **Latest** means the greatest date. Two entries on the same date: the one added last (`createdAt`) wins; without
+  `createdAt`, the first listed wins. Invalid entries (not a number, zero, negative) are skipped.
+- **Profile:** shows the value read-only with "Latest weigh-in: 03 Oct 2026" and a **Manage in Weight History**
+  button. It never saves a weight, never creates a weigh-in, and opening or refreshing it writes nothing.
+- **Adding a weight:** do it in Settings → Weight History. The Profile, Dashboard and Nutrition panel then use it.
+- **Legacy fallback:** older versions stored a weight on the profile document (`currentWeight`). It is only used,
+  read-only and labelled as such, when there is no valid Weight History yet. The app no longer writes it, never
+  clears it, and no existing data is migrated or rewritten. Once a weigh-in exists, history wins.
+
 ### Units
 
 `profile.unitPreference` is `"kg"` or `"lb"` (the profile field is labelled **Weight unit**; default kg).
 
-- **Stored body weights are always kilograms** (`profile.currentWeight`, `weightHistory[].weight`). Switching the
+- **Stored body weights are always kilograms** (`weightHistory[].weight`). Switching the
   preference never changes stored data: values are converted only for display, and a typed value is converted back to
   kilograms (rounded to 0.01) before saving. See `units.js`.
 - The preference is applied to body weight on the Dashboard, Progress (weight history), Settings → Weight History and
-  the Profile form (the box converts when you flip the selector).
+  the Profile's read-only current weight (it re-displays when you flip the unit selector).
 - **Not covered by the preference:** exports (always kilograms, headers say `Weight (kg)`), lifting loads in
   sessions / History / Progress (unit-less numbers shown as kg), height (cm) and body measurements (inches).
   Making these unit-aware is a separate, not-yet-approved decision.
@@ -123,15 +143,16 @@ Rules (formula version `nutrition-v1`):
 - **Validation:** age 18–100, height 100–250 cm, weight 30–300 kg (kilograms, converted with `units.js`), sex
   Male/Female, a known activity level and goal type. Anything missing or impossible returns clear errors and no
   numbers; a calorie target too low for the protein and fat targets also returns an error, never negative carbs.
-- **Current weight:** the latest valid Weight History entry, else the profile weight. Weight History is never modified.
+- **Current weight:** the latest valid Weight History entry (see Current weight above); the legacy profile weight is
+  only a fallback when there is no history. Weight History is never modified.
 
-Nothing is ever applied automatically. A new weigh-in only changes the *recommendation* the next time Goals is
+Nothing is ever applied automatically. A new weigh-in only changes the _recommendation_ the next time Goals is
 opened. Applying (with confirmation when it replaces different numbers) writes the four fields plus light metadata
 to the same goal document: `nutritionSource` (`recommended` / `manual`), `nutritionAppliedAt`,
 `calculatedFromWeightKg`, `calculatedFromGoal`, `nutritionFormulaVersion`. Goals saved by hand are marked `manual`
 only when their numbers change; existing goals saved unchanged are left exactly as they were.
 
-Not implemented (future): target weight / target rate fields and any adjustment based on weight *trend*.
+Not implemented (future): target weight / target rate fields and any adjustment based on weight _trend_.
 
 ## Exercise Library
 
@@ -191,7 +212,8 @@ Firestore rules restrict each signed-in user to their own `users/{uid}` tree and
 - Plans: `dayOfWeek` (1–7); exercises have `id` (slot), optional `libraryExerciseId`, `name`, `sets`, `repMin`,
   `repMax`, `targetRIR`, `restSeconds`, `notes`.
 - Logged sets: `weight`, `reps`, `rir` (typed numbers, unit-less).
-- Body weight: kilograms. Height: centimetres.
+- Body weight: kilograms, stored in `weightHistory` (`{ weight, date, createdAt }`). A legacy `currentWeight` may
+  still exist on the profile document; it is a read-only fallback and is no longer written. Height: centimetres.
 - Measurements are in inches and may exist as `shoulders`/`shoulder`, `thighs`/`thigh`, `arms` or
   `leftArm`/`rightArm`; the UI and exports read all of them.
 - Goals: `goalType`, `calories`, `protein`, `carbs`, `fat`, `startDate`, `endDate`, plus optional nutrition metadata

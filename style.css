@@ -5171,3 +5171,43 @@ textarea {
 .goal-source--manual {
   color: var(--text-muted);
 }
+
+
+/* ==========================================================================
+   29. CURRENT WEIGHT READOUT (Profile) â€” read-only, comes from Weight History
+   ========================================================================== */
+
+.current-weight-readout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background:
+    linear-gradient(145deg, rgba(255, 193, 7, .04), rgba(255, 255, 255, .01)),
+    var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-card);
+}
+
+.current-weight-value {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  letter-spacing: 1px;
+  line-height: 1.1;
+}
+
+.current-weight-note {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.current-weight-readout--profile .current-weight-note,
+.current-weight-readout--none .current-weight-note {
+  color: var(--warning);
+}
+
+.current-weight-manage {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+}

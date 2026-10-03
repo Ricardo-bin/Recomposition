@@ -23,6 +23,10 @@ import {
   normalizeWeightUnit,
   weightUnitLabel
 } from "./units.js";
+
+import {
+  resolveCurrentWeight
+} from "./currentWeight.js";
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -167,13 +171,18 @@ async function renderDashboard() {
 
     const userName = profile?.name || "Athlete";
 
-    // Latest weight-history entry wins; profile weight is the fallback.
-    const latestWeightEntry = weightHistory.find(
-      entry => Number.isFinite(Number(entry.weight)) && Number(entry.weight) > 0
+    // Weight History is the source of truth (the same resolver Profile and
+    // Goals use). The old profile weight is only a fallback when there are no
+    // weigh-ins.
+    const currentWeight = resolveCurrentWeight(
+      weightHistory,
+      profile?.currentWeight
     );
-    const weight = latestWeightEntry
-      ? latestWeightEntry.weight
-      : profile?.currentWeight;
+
+    const latestWeightEntry =
+      currentWeight.source === "weight-history";
+
+    const weight = currentWeight.weightKg;
     // Stored weights are kilograms; the preference only changes the display.
     const weightUnit =
       normalizeWeightUnit(profile?.unitPreference);

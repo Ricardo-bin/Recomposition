@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 
 import * as units from "../units.js";
 import * as engine from "../nutritionEngine.js";
+import * as currentWeight from "../currentWeight.js";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 
 const JSDOM = await loadJSDOM();
@@ -75,7 +76,8 @@ async function bootGoals({ goals = [], profile = PROFILE, weights = WEIGHTS, pro
     getProfile: async () => { if (live.profileFails) throw new Error("offline"); return live.profile; },
     getWeightHistory: async () => live.weights,
     ...Object.fromEntries(Object.keys(engine).map(k => [k, engine[k]])),
-    ...Object.fromEntries(Object.keys(units).map(k => [k, units[k]]))
+    ...Object.fromEntries(Object.keys(units).map(k => [k, units[k]])),
+    ...Object.fromEntries(Object.keys(currentWeight).map(k => [k, currentWeight[k]]))
   };
 
   const { source } = loadSource("goals.js", stubs);
@@ -588,7 +590,8 @@ async function openDashboard(goals) {
     getWorkoutLogs: async () => [],
     getWeightHistory: async () => WEIGHTS,
     getGoals: async () => goals,
-    ...Object.fromEntries(Object.keys(units).map(k => [k, units[k]]))
+    ...Object.fromEntries(Object.keys(units).map(k => [k, units[k]])),
+    ...Object.fromEntries(Object.keys(currentWeight).map(k => [k, currentWeight[k]]))
   };
 
   const names = [...read("dashboard.js").matchAll(/import\s*\{([\s\S]*?)\}\s*from\s*"([^"]+)";/g)].flatMap(m => m[1].split(",").map(x => x.trim()).filter(Boolean));

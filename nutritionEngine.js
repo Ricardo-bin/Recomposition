@@ -132,11 +132,24 @@ const positiveNumber = value => {
   return Number.isFinite(number) && number > 0 ? number : null;
 };
 
-// The athlete's CURRENT weight in kg:
-//   1. the most recent valid Weight History entry (greatest date; on a tie the
-//      first one listed wins), else
-//   2. the profile's stored weight (the same fallback the Dashboard uses), else null.
-// Weight History is never modified.
+// Milliseconds for a Firestore Timestamp, Date, ISO string or number (else NaN).
+const timeOf = value => {
+  if (value === null || value === undefined) return NaN;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+
+  return new Date(value).getTime();
+};
+
+// The athlete's CURRENT weight in kg. WEIGHT HISTORY IS THE SOURCE OF TRUTH:
+//   1. the most recent valid Weight History entry: the greatest date; entries on
+//      the same date are ordered by when they were added (`createdAt`, newest
+//      wins); if that is unavailable the first one listed wins, else
+//   2. the weight stored on the profile before Weight History existed (a legacy
+//      fallback only; the app no longer writes it), else null.
+// Weight History is never modified. Every screen that needs the current weight
+// (Profile, Dashboard, Goals / Nutrition) uses this one function via
+// currentWeight.js, so they cannot disagree.
 export function pickCurrentWeightKg(weightHistory, profileWeightKg) {
   let best = null;
 
@@ -146,9 +159,15 @@ export function pickCurrentWeightKg(weightHistory, profileWeightKg) {
     if (weightKg === null) continue;
 
     const date = typeof entry.date === "string" ? entry.date : "";
+    const added = timeOf(entry.createdAt);
 
-    if (best === null || date > best.date) {
-      best = { weightKg, date };
+    const newer =
+      best === null ||
+      date > best.date ||
+      (date === best.date && added > best.added);   // NaN comparisons are false
+
+    if (newer) {
+      best = { weightKg, date, added };
     }
   }
 

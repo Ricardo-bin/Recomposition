@@ -5,7 +5,8 @@
 
 import {
   getProfile,
-  updateProfileData
+  updateProfileData,
+  getWeightHistory
 } from "./data/recompositionData.js";
 
 import {
@@ -19,11 +20,13 @@ import {
 
 import {
   normalizeWeightUnit,
-  weightInputValue,
-  displayToKg,
-  convertInputText,
-  weightRange
+  formatWeight
 } from "./units.js";
+
+import {
+  resolveCurrentWeight,
+  describeCurrentWeight
+} from "./currentWeight.js";
 
 // ============================================================================
 // HELPERS
@@ -84,10 +87,23 @@ document.getElementById("settings-profile-content");
 
     const profile = await getProfile();
 
-    // Stored weights are kilograms. The preference only changes how the weight
-    // is shown / typed (see units.js).
+    // WEIGHT HISTORY is the source of truth for body weight. The profile does
+    // not store or edit a competing current weight: it shows the latest
+    // weigh-in (stored in kg, displayed in the preferred unit; see units.js).
+    let weightHistory = [];
+    let weightHistoryFailed = false;
+
+    try {
+      weightHistory = await getWeightHistory();
+    } catch (error) {
+      console.error("Weight history could not be loaded for the profile:", error);
+      weightHistoryFailed = true;
+    }
+
     const weightUnit = normalizeWeightUnit(profile.unitPreference);
-    const weightBounds = weightRange(weightUnit);
+
+    const currentWeight = resolveCurrentWeight(weightHistory, profile.currentWeight);
+    const currentWeightInfo = describeCurrentWeight(currentWeight);
 
 const currentUser = auth.currentUser;
 
@@ -344,28 +360,42 @@ const currentUser = auth.currentUser;
             </div>
 
 
-            <!-- CURRENT WEIGHT -->
-
+            <!-- CURRENT WEIGHT (read-only: comes from Weight History) -->
             <div class="form-group">
+              <span class="form-label">
+                CURRENT WEIGHT
+              </span>
 
-              <label
-                class="form-label"
-                for="profile-weight"
+              <div
+                class="current-weight-readout current-weight-readout--${currentWeightInfo.kind}"
+                id="profile-current-weight-box"
               >
-                CURRENT WEIGHT (${weightUnit.toUpperCase()})
-              </label>
-              <input
-                type="number"
-                id="profile-weight"
-                class="form-input"
-                placeholder="e.g. ${weightUnit === "lb" ? "154" : "70"}"
-                min="${weightBounds.min}"
-                max="${weightBounds.max}"
-                step="0.1"
-                value="${escapeHTML(weightInputValue(profile.currentWeight, weightUnit))}"
-                inputmode="decimal"
-              >
+                <div
+                  class="current-weight-value"
+                  id="profile-current-weight"
+                >${
+                  currentWeight.weightKg === null
+                    ? "—"
+                    : escapeHTML(formatWeight(currentWeight.weightKg, weightUnit))
+                }</div>
 
+                <div
+                  class="current-weight-note"
+                  id="profile-current-weight-note"
+                >${escapeHTML(
+                  weightHistoryFailed
+                    ? "Weight history could not be loaded."
+                    : currentWeightInfo.note
+                )}</div>
+
+                <button
+                  type="button"
+                  class="secondary-btn current-weight-manage"
+                  id="btn-manage-weight"
+                >
+                  Manage in Weight History
+                </button>
+              </div>
             </div>
 
           </div>
@@ -591,34 +621,29 @@ const currentUser = auth.currentUser;
     // SAVE PROFILE
     // ========================================================================
 
-    // When the unit selector changes, convert the number already typed so the
-    // box always agrees with the selected unit; stored data is untouched.
-    let activeWeightUnit = weightUnit;
-
+    // When the unit selector changes, re-display the (read-only) current weight in
+    // the chosen unit. Nothing is stored until Save, and weight is never saved here.
     document
       .getElementById("profile-unit")
       ?.addEventListener("change", event => {
-        const nextUnit = normalizeWeightUnit(event.target.value);
-        const weightInput = document.getElementById("profile-weight");
-        const weightLabel = document.querySelector('label[for="profile-weight"]');
-        const bounds = weightRange(nextUnit);
+        const display = document.getElementById("profile-current-weight");
 
-        if (weightInput) {
-          weightInput.value = convertInputText(
-            weightInput.value,
-            activeWeightUnit,
-            nextUnit
+        if (display && currentWeight.weightKg !== null) {
+          display.textContent = formatWeight(
+            currentWeight.weightKg,
+            normalizeWeightUnit(event.target.value)
           );
-          weightInput.min = String(bounds.min);
-          weightInput.max = String(bounds.max);
-          weightInput.placeholder = `e.g. ${nextUnit === "lb" ? "154" : "70"}`;
         }
+      });
 
-        if (weightLabel) {
-          weightLabel.textContent = `CURRENT WEIGHT (${nextUnit.toUpperCase()})`;
-        }
+    document
+      .getElementById("btn-manage-weight")
+      ?.addEventListener("click", () => {
+        window.RecompositionNavigation?.showSection("settings");
 
-        activeWeightUnit = nextUnit;
+        document
+          .getElementById("settings-weight")
+          ?.click();
       });
 
     const saveButton =
@@ -660,10 +685,7 @@ const currentUser = auth.currentUser;
               .value;
 
 
-          const weightValue =
-            document
-              .getElementById("profile-weight")
-              .value;
+          
 
 
           const sex =
@@ -721,14 +743,7 @@ const currentUser = auth.currentUser;
               : Number(heightValue);
 
 
-          // The box is in the selected unit; storage is always kilograms.
-          const currentWeight =
-            weightValue === ""
-              ? null
-              : displayToKg(
-                  weightValue,
-                  unitPreference
-                );
+          
 
 
           if (
@@ -759,18 +774,7 @@ const currentUser = auth.currentUser;
           }
 
 
-          if (
-            currentWeight !== null &&
-            (!Number.isFinite(currentWeight) ||
-             currentWeight < 20 ||
-             currentWeight > 400)
-          ) {
-
-            throw new Error(
-              "Please enter a valid body weight."
-            );
-
-          }
+          
 
 
           // ================================================================
@@ -783,7 +787,8 @@ const currentUser = auth.currentUser;
             age,
             sex,
             height,
-            currentWeight,
+            // currentWeight is intentionally NOT written: Weight History is the
+            // source of truth, and any legacy profile value is left untouched.
             gymStartDate,
             activityLevel,
             trainingExperience,

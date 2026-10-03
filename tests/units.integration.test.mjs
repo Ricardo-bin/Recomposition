@@ -12,6 +12,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as units from "../units.js";
+import * as currentWeight from "../currentWeight.js";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 
 const JSDOM = await loadJSDOM();
@@ -44,6 +45,8 @@ function loadModule(file, { html, overrides = {}, auth = { currentUser: { uid: "
   for (const [name, from] of names) {
     if (from === "./units.js") {
       stubs[name] = units[name];
+    } else if (from === "./currentWeight.js") {
+      stubs[name] = currentWeight[name];
     } else if (name in overrides) {
       stubs[name] = overrides[name];
     } else if (name === "auth") {
@@ -192,15 +195,18 @@ test("Progress shows body weight in the preferred unit (stored kg untouched)", {
 
 // ----------------------------------------------------------------------------
 // PROFILE
+// Weight History is the source of truth: the Profile shows the latest weigh-in
+// as a READ-ONLY value (in the preferred unit) and never saves a weight.
 // ----------------------------------------------------------------------------
 
-async function openProfile(profile) {
+async function openProfile(profile, weights = []) {
   const saved = [];
 
   const m = loadModule("profile.js", {
     html: `<div id="settings-profile-content"></div>`,
     overrides: {
       getProfile: async () => ({ ...PROFILE, ...profile }),
+      getWeightHistory: async () => weights,
       updateProfileData: async data => { saved.push(data); }
     }
   });
@@ -212,8 +218,8 @@ async function openProfile(profile) {
 
   return {
     ...m, saved, d,
-    weightInput: () => d.getElementById("profile-weight"),
-    weightLabel: () => text(d.querySelector('label[for="profile-weight"]')),
+    weightValue: () => text(d.getElementById("profile-current-weight")),
+    weightNote: () => text(d.getElementById("profile-current-weight-note")),
     unitSelect: () => d.getElementById("profile-unit"),
     setUnit(value) {
       const select = d.getElementById("profile-unit");
@@ -228,92 +234,105 @@ async function openProfile(profile) {
   };
 }
 
-test("Profile: kg preference looks and behaves exactly as before", { skip }, async () => {
-  const p = await openProfile({ unitPreference: "kg", currentWeight: 72.5 });
+const HISTORY = [
+  { weight: 72.57, date: "2026-10-03" },
+  { weight: 70.5, date: "2026-09-28" }
+];
 
-  assert.equal(p.weightLabel(), "CURRENT WEIGHT (KG)");
-  assert.equal(p.weightInput().value, "72.5");
+test("Profile: kg preference shows the latest weigh-in; saving never includes a weight", { skip }, async () => {
+  const p = await openProfile({ unitPreference: "kg", currentWeight: 99 }, HISTORY);
+
+  assert.equal(p.weightValue(), "72.6 kg", "latest Weight History entry, not the stale profile value 99");
   assert.equal(p.unitSelect().value, "kg");
 
   await p.save();
 
   assert.equal(p.saved.length, 1, p.message());
-  assert.equal(p.saved[0].currentWeight, 72.5);
+  assert.equal("currentWeight" in p.saved[0], false, "the profile must not write a competing weight");
   assert.equal(p.saved[0].unitPreference, "kg");
   assert.equal(p.saved[0].height, 173, "height is not part of the unit preference");
 });
 
-test("Profile: a legacy profile with no unitPreference defaults to kg", { skip }, async () => {
-  const p = await openProfile({ unitPreference: undefined, currentWeight: 80 });
+test("Profile: a legacy profile with no unitPreference shows kilograms", { skip }, async () => {
+  const p = await openProfile({ unitPreference: undefined }, [{ weight: 80, date: "2026-10-03" }]);
 
-  assert.equal(p.weightLabel(), "CURRENT WEIGHT (KG)");
-  assert.equal(p.weightInput().value, "80");
+  assert.equal(p.weightValue(), "80 kg");
 });
 
-test("Profile: lb preference shows the stored kg value in pounds and saves back as kg", { skip }, async () => {
-  const p = await openProfile({ unitPreference: "lb", currentWeight: 72.57 });
+test("Profile: lb preference shows the stored kg weight in pounds (read-only) and still saves no weight", { skip }, async () => {
+  const p = await openProfile({ unitPreference: "lb" }, HISTORY);
 
-  assert.equal(p.weightLabel(), "CURRENT WEIGHT (LB)");
-  assert.equal(p.weightInput().value, "160");
+  assert.equal(p.weightValue(), "160 lb");
+  assert.equal(p.d.getElementById("profile-weight"), null, "there is no weight input to type pounds into");
 
   await p.save();
 
-  assert.equal(p.saved[0].currentWeight, 72.57, "round trip: 160 lb -> same stored kg");
   assert.equal(p.saved[0].unitPreference, "lb");
+  assert.equal("currentWeight" in p.saved[0], false);
 });
 
-test("Profile: typing pounds is stored as kilograms", { skip }, async () => {
-  const p = await openProfile({ unitPreference: "lb", currentWeight: 72.57 });
+test("Profile: there is no editable weight field at all", { skip }, async () => {
+  const p = await openProfile({ unitPreference: "kg" }, HISTORY);
 
-  p.weightInput().value = "175";
-  await p.save();
-
-  assert.equal(p.saved[0].currentWeight, 79.38);
+  assert.equal(p.d.getElementById("profile-weight"), null);
+  assert.equal(p.d.querySelector('label[for="profile-weight"]'), null);
+  assert.equal(p.d.querySelectorAll("#settings-profile-content input[type='number']").length, 2, "only age and height remain numeric inputs");
+  assert.ok(p.d.getElementById("btn-manage-weight"), "a clear Manage in Weight History action");
 });
 
-test("Profile: flipping the unit selector converts the box and the label; saving stores kg", { skip }, async () => {
-  const p = await openProfile({ unitPreference: "kg", currentWeight: 72.5 });
+test("Profile: flipping the unit selector re-displays the same weight in the chosen unit; storage unchanged", { skip }, async () => {
+  const p = await openProfile({ unitPreference: "kg" }, [{ weight: 72.5, date: "2026-10-03" }]);
 
   p.setUnit("lb");
-
-  assert.equal(p.weightInput().value, "159.8");
-  assert.equal(p.weightLabel(), "CURRENT WEIGHT (LB)");
+  assert.equal(p.weightValue(), "159.8 lb");
 
   p.setUnit("kg");
-
-  assert.equal(p.weightInput().value, "72.5", "flipping back restores the number");
+  assert.equal(p.weightValue(), "72.5 kg", "flipping back restores the value");
 
   p.setUnit("lb");
   await p.save();
 
   assert.equal(p.saved[0].unitPreference, "lb");
-  assert.ok(Math.abs(p.saved[0].currentWeight - 72.5) < 0.05, `stored ${p.saved[0].currentWeight} kg`);
+  assert.equal("currentWeight" in p.saved[0], false, "only the unit preference is stored");
 });
 
-test("Profile: blank weight saves null; out-of-range weight is rejected in either unit", { skip }, async () => {
-  const blank = await openProfile({ unitPreference: "lb", currentWeight: 72.57 });
-  blank.weightInput().value = "";
-  await blank.save();
-  assert.equal(blank.saved[0].currentWeight, null);
+test("Profile: weight can never block or alter a profile save (even a nonsense legacy value)", { skip }, async () => {
+  const p = await openProfile({ unitPreference: "lb", currentWeight: 99999 }, []);
 
-  const tooLight = await openProfile({ unitPreference: "lb", currentWeight: 72.57 });
-  tooLight.weightInput().value = "30";            // 13.6 kg < 20 kg
-  await tooLight.save();
-  assert.equal(tooLight.saved.length, 0);
-  assert.match(tooLight.message(), /valid body weight/);
+  await p.save();
 
-  const tooHeavy = await openProfile({ unitPreference: "kg", currentWeight: 80 });
-  tooHeavy.weightInput().value = "401";
-  await tooHeavy.save();
-  assert.equal(tooHeavy.saved.length, 0);
+  assert.equal(p.saved.length, 1, "profile saves normally: " + p.message());
+  assert.ok(!/valid body weight/.test(p.message()));
+  assert.equal("currentWeight" in p.saved[0], false, "the legacy value is left untouched, not overwritten or cleared");
 });
 
-test("Profile: input limits follow the unit", { skip }, async () => {
-  const kg = await openProfile({ unitPreference: "kg" });
-  const lb = await openProfile({ unitPreference: "lb" });
+test("Profile: with no weigh-ins the legacy profile weight is shown as a clearly-labelled fallback", { skip }, async () => {
+  const p = await openProfile({ unitPreference: "kg", currentWeight: 72.5 }, []);
 
-  assert.deepEqual([kg.weightInput().min, kg.weightInput().max], ["20", "400"]);
-  assert.deepEqual([lb.weightInput().min, lb.weightInput().max], ["44", "882"]);
+  assert.equal(p.weightValue(), "72.5 kg");
+  assert.match(p.weightNote(), /earlier profile entry/);
+  assert.match(p.weightNote(), /Add a weigh-in in Weight History/);
+});
+
+test("Profile: nothing recorded at all says so and points to Weight History", { skip }, async () => {
+  const p = await openProfile({ currentWeight: null }, []);
+
+  assert.equal(p.weightValue(), "—");
+  assert.match(p.weightNote(), /No weight recorded yet/);
+});
+
+test("Profile: Manage in Weight History opens Settings -> Weight History", { skip }, async () => {
+  const p = await openProfile({}, HISTORY);
+
+  p.d.body.insertAdjacentHTML("beforeend", `<button id="settings-weight"></button>`);
+
+  const clicks = [];
+  p.window.RecompositionNavigation = { showSection: id => clicks.push(id) };
+  p.d.getElementById("settings-weight").addEventListener("click", () => clicks.push("weight-page"));
+
+  p.d.getElementById("btn-manage-weight").click();
+
+  assert.deepEqual(clicks, ["settings", "weight-page"]);
 });
 
 
