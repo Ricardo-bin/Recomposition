@@ -32,7 +32,7 @@
 
 html {
   min-height: 100%;
-  background: #08090c;
+  background: var(--bg-main);
 }
 
 body {
@@ -40,11 +40,11 @@ body {
   background:
     radial-gradient(
       circle at 50% -10%,
-      rgba(255, 193, 7, 0.07),
+      rgba(var(--accent-rgb), 0.07),
       transparent 35%
     ),
-    #08090c;
-  color: #f4f4f5;
+    var(--bg-main);
+  color: var(--text-primary);
 
   font-family:
     "Batman Forever", sans-serif;
@@ -78,9 +78,9 @@ textarea {
 input,
 select,
 textarea {
-  background: #0d0e12;
-  color: #f4f4f5;
-  border: 1px solid #30323a;
+  background: var(--bg-field);
+  color: var(--text-primary);
+  border: 1px solid var(--border-field);
   border-radius: 6px;
   font-family: inherit;
 }
@@ -89,8 +89,8 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: #ffc107;
-  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
 }
 
 .hidden {
@@ -148,6 +148,33 @@ textarea:focus {
   --nav-height: 76px;
 }
 
+:root {
+  /* THEME TOKENS (dark defaults = the original look; themes.css overrides them) */
+  --bg-auth: #08080c;
+  --bg-field: #0d0e12;
+  --border-field: #30323a;
+  --placeholder: #50535b;
+  --on-accent: #08090c;
+  --bg-raised: #17191f;
+  --bg-raised-hover: #1d2027;
+  --bg-chip: #181a20;
+  --icon-muted: #777777;
+  --text-strong: #f2f2f2;
+  --danger-text: #ff8a80;
+  --success-text: #8ee6a0;
+
+  /* rgb triplets, used as rgba(var(--x-rgb), alpha) */
+  --sheen-rgb: 255, 255, 255;
+  --accent-rgb: 255, 193, 7;
+  --danger-rgb: 255, 82, 82;
+  --chrome-rgb: 8, 9, 12;
+  --warning-rgb: 255, 179, 0;
+  --success-rgb: 76, 217, 100;
+
+  /* display text hooks */
+  --display-transform: inherit;
+}
+
 
 /* ==========================================================================
    3. AUTHENTICATION
@@ -167,10 +194,10 @@ textarea:focus {
   background:
     radial-gradient(
       circle at 50% 20%,
-      rgba(255, 193, 7, 0.08),
+      rgba(var(--accent-rgb), 0.08),
       transparent 35%
     ),
-    #08080c;
+    var(--bg-auth);
 
   overflow-y: auto;
 }
@@ -218,7 +245,8 @@ textarea:focus {
 
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 24px;
   font-weight: normal;
   line-height: 1.2;
@@ -260,14 +288,14 @@ textarea:focus {
 }
 
 .auth-form input::placeholder {
-  color: #50535b;
+  color: var(--placeholder);
 }
 
 .auth-form input:focus {
-  border-color: rgba(255, 193, 7, 0.65);
+  border-color: rgba(var(--accent-rgb), 0.65);
 
   box-shadow:
-    0 0 0 3px rgba(255, 193, 7, 0.08);
+    0 0 0 3px rgba(var(--accent-rgb), 0.08);
 }
 
 .auth-primary,
@@ -292,7 +320,7 @@ textarea:focus {
 }
 
 .auth-primary {
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
   border: 1px solid var(--accent);
 }
@@ -304,12 +332,12 @@ textarea:focus {
 
 .auth-google {
   color: var(--text-primary);
-  background: #17191f;
+  background: var(--bg-raised);
   border: 1px solid var(--border-medium);
 }
 
 .auth-google:hover {
-  background: #1d2027;
+  background: var(--bg-raised-hover);
 }
 
 .auth-secondary {
@@ -319,7 +347,7 @@ textarea:focus {
 }
 
 .auth-secondary:hover {
-  background: rgba(255, 193, 7, 0.07);
+  background: rgba(var(--accent-rgb), 0.07);
 }
 
 .auth-link {
@@ -389,7 +417,7 @@ textarea:focus {
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.015),
+      rgba(var(--sheen-rgb), 0.015),
       transparent 180px
     );
 }
@@ -414,7 +442,7 @@ textarea:focus {
     12px
     max(20px, calc((100vw - var(--max-width)) / 2));
 
-  background: rgba(8, 9, 12, 0.90);
+  background: rgba(var(--chrome-rgb), 0.90);
 
   border-bottom: 1px solid var(--border-subtle);
 
@@ -434,7 +462,7 @@ textarea:focus {
   width: 38px;
   height: 38px;
 
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
 
   border-radius: 9px;
@@ -451,7 +479,8 @@ textarea:focus {
 .topbar-title {
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 14px;
   font-weight: normal;
   letter-spacing: 2px;
@@ -509,7 +538,8 @@ textarea:focus {
 
   color: var(--accent);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 10px;
   font-weight: normal;
   letter-spacing: 2px;
@@ -519,7 +549,8 @@ textarea:focus {
 .section-title {
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: clamp(26px, 4vw, 38px);
   font-weight: normal;
   letter-spacing: 1px;
@@ -547,8 +578,8 @@ textarea:focus {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.025),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--sheen-rgb), 0.025),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -575,7 +606,8 @@ textarea:focus {
 .panel-title {
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 13px;
   font-weight: normal;
   letter-spacing: 0.8px;
@@ -608,8 +640,8 @@ textarea:focus {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.025),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.025),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -631,7 +663,8 @@ textarea:focus {
 .stat-label {
   color: var(--accent);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 8px;
   font-weight: normal;
   letter-spacing: 1.2px;
@@ -643,7 +676,8 @@ textarea:focus {
 
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 25px;
   font-weight: normal;
   letter-spacing: 0.5px;
@@ -703,7 +737,7 @@ textarea:focus {
 
 .btn-primary {
   background: var(--accent);
-  color: #08090c;
+  color: var(--on-accent);
 
   border: 1px solid var(--accent);
   border-radius: 6px;
@@ -711,7 +745,7 @@ textarea:focus {
   font-family: inherit;
   font-weight: 700;
 
-  box-shadow: 0 4px 14px rgba(255, 193, 7, 0.10);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.10);
 }
 
 .btn-primary:hover {
@@ -720,7 +754,7 @@ textarea:focus {
 
   transform: translateY(-1px);
 
-  box-shadow: 0 6px 18px rgba(255, 193, 7, 0.16);
+  box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.16);
 }
 
 .btn-secondary {
@@ -739,15 +773,15 @@ textarea:focus {
 
   border-color: var(--border-accent);
 
-  background: rgba(255, 193, 7, 0.04);
+  background: rgba(var(--accent-rgb), 0.04);
 }
 
 .btn-danger {
   color: #fff;
 
-  background: rgba(255, 82, 82, 0.10);
+  background: rgba(var(--danger-rgb), 0.10);
 
-  border: 1px solid rgba(255, 82, 82, 0.30);
+  border: 1px solid rgba(var(--danger-rgb), 0.30);
 }
 
 
@@ -812,15 +846,15 @@ textarea:focus {
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-  border-color: rgba(255, 193, 7, 0.65);
+  border-color: rgba(var(--accent-rgb), 0.65);
 
   box-shadow:
-    0 0 0 3px rgba(255, 193, 7, 0.07);
+    0 0 0 3px rgba(var(--accent-rgb), 0.07);
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: #50535b;
+  color: var(--placeholder);
 }
 
 
@@ -843,8 +877,8 @@ textarea:focus {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.02),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.02),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -862,8 +896,8 @@ textarea:focus {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.02),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.02),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -916,8 +950,8 @@ textarea:focus {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.02),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.02),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel-2);
 
@@ -1117,7 +1151,7 @@ textarea:focus {
 .nav-btn.active {
   color: var(--accent);
 
-  background: rgba(255, 193, 7, 0.07);
+  background: rgba(var(--accent-rgb), 0.07);
 }
 
 .nav-icon {
@@ -1148,7 +1182,7 @@ textarea:focus {
 
   color: var(--text-primary);
 
-  background: #181a20;
+  background: var(--bg-chip);
 
   border: 1px solid var(--border-medium);
   border-radius: 9px;
@@ -1179,7 +1213,7 @@ textarea:focus {
 
 
 /* ==========================================================================
-   17. RESPONSIVE â€” TABLET
+   17. RESPONSIVE — TABLET
    ========================================================================== */
 
 @media (max-width: 800px) {
@@ -1193,7 +1227,7 @@ textarea:focus {
 
 
 /* ==========================================================================
-   18. RESPONSIVE â€” MOBILE
+   18. RESPONSIVE — MOBILE
    ========================================================================== */
 
 @media (max-width: 600px) {
@@ -1213,7 +1247,8 @@ textarea:focus {
   .auth-logo {
   color: var(--accent);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 28px;
   font-weight: normal;
   letter-spacing: 3px;
@@ -1442,7 +1477,7 @@ textarea:focus {
   border-color: var(--border-accent);
 
   box-shadow:
-    inset 0 1px 0 rgba(255, 193, 7, 0.08);
+    inset 0 1px 0 rgba(var(--accent-rgb), 0.08);
 }
 
 .workout-day-top {
@@ -1458,12 +1493,13 @@ textarea:focus {
   padding: 3px 6px;
 
   color: var(--accent);
-  background: rgba(255, 193, 7, 0.06);
+  background: rgba(var(--accent-rgb), 0.06);
 
   border: 1px solid var(--border-accent);
   border-radius: 4px;
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 7px;
   font-weight: normal;
   letter-spacing: 0.7px;
@@ -1496,8 +1532,8 @@ textarea:focus {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.025),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.025),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel-2);
 
@@ -1517,7 +1553,8 @@ textarea:focus {
 .workout-plan-name {
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 11px;
   font-weight: normal;
   letter-spacing: 0.6px;
@@ -1557,7 +1594,7 @@ textarea:focus {
 .workout-small-button:hover {
   color: var(--accent);
   border-color: var(--border-accent);
-  background: rgba(255, 193, 7, 0.04);
+  background: rgba(var(--accent-rgb), 0.04);
 }
 
 .workout-small-button:hover {
@@ -1569,7 +1606,7 @@ textarea:focus {
 .workout-small-button.danger:hover {
   color: var(--danger);
 
-  border-color: rgba(255, 82, 82, 0.30);
+  border-color: rgba(var(--danger-rgb), 0.30);
 }
 
 .day-add-button {
@@ -1716,7 +1753,7 @@ textarea:focus {
 }
 
 .exercise-builder-card:focus-within {
-  border-color: rgba(255, 193, 7, 0.28);
+  border-color: rgba(var(--accent-rgb), 0.28);
 }
 
 .exercise-builder-card-header {
@@ -1727,7 +1764,7 @@ textarea:focus {
 
   padding: 12px 14px;
 
-  background: rgba(255, 255, 255, 0.015);
+  background: rgba(var(--sheen-rgb), 0.015);
 
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -1741,7 +1778,7 @@ textarea:focus {
   width: 30px;
   height: 30px;
 
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
 
   border-radius: 7px;
@@ -1810,7 +1847,7 @@ textarea:focus {
 .exercise-delete-button:hover {
   color: var(--danger);
 
-  border-color: rgba(255, 82, 82, 0.30);
+  border-color: rgba(var(--danger-rgb), 0.30);
 }
 
 .exercise-builder-fields {
@@ -1858,7 +1895,7 @@ textarea:focus {
 
 
 /* ==========================================================================
-   EXERCISE BUILDER â€” TABLET
+   EXERCISE BUILDER — TABLET
    ========================================================================== */
 
 @media (max-width: 1000px) {
@@ -1876,7 +1913,7 @@ textarea:focus {
 
 
 /* ==========================================================================
-   EXERCISE BUILDER â€” MOBILE
+   EXERCISE BUILDER — MOBILE
    ========================================================================== */
 
 @media (max-width: 600px) {
@@ -1924,8 +1961,8 @@ textarea:focus {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.02),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.02),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -1971,7 +2008,8 @@ textarea:focus {
   margin: 0;
 
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 13px;
   font-weight: normal;
   letter-spacing: 0.6px;
@@ -2017,7 +2055,7 @@ textarea:focus {
 
 .history-expand-btn:hover {
   color: var(--accent);
-  background: rgba(255, 193, 7, 0.04);
+  background: rgba(var(--accent-rgb), 0.04);
   border-color: var(--border-accent);
 }
 
@@ -2061,7 +2099,8 @@ textarea:focus {
   margin: 0;
 
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 10px;
   font-weight: normal;
   letter-spacing: 0.5px;
@@ -2203,7 +2242,7 @@ textarea:focus {
 .history-edit-btn:hover,
 .history-cancel-edit:hover {
   color: var(--accent);
-  background: rgba(255, 193, 7, 0.04);
+  background: rgba(var(--accent-rgb), 0.04);
   border-color: var(--border-accent);
 }
 
@@ -2293,7 +2332,7 @@ textarea:focus {
 }
 
 .history-save-edit {
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
 
   border: 1px solid var(--accent);
@@ -2344,7 +2383,7 @@ textarea:focus {
   color: var(--danger);
   background: transparent;
 
-  border: 1px solid rgba(255, 82, 82, 0.30);
+  border: 1px solid rgba(var(--danger-rgb), 0.30);
   border-radius: 5px;
 
   font-family: inherit;
@@ -2361,8 +2400,8 @@ textarea:focus {
 }
 
 .history-delete-btn:hover {
-  background: rgba(255, 82, 82, 0.08);
-  border-color: rgba(255, 82, 82, 0.45);
+  background: rgba(var(--danger-rgb), 0.08);
+  border-color: rgba(var(--danger-rgb), 0.45);
 }
 
 
@@ -2416,7 +2455,7 @@ textarea:focus {
 .history-search-input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.10);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.10);
 }
 
 .history-search-input::placeholder {
@@ -2437,7 +2476,7 @@ textarea:focus {
   padding: 11px 12px;
 
   background: rgba(12, 12, 16, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(var(--sheen-rgb), 0.09);
   border-radius: 9px;
 
   color: inherit;
@@ -2449,7 +2488,7 @@ textarea:focus {
 }
 
 .history-filter-select:focus {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(var(--sheen-rgb), 0.25);
 }
 
 @media (max-width: 600px) {
@@ -2461,7 +2500,7 @@ textarea:focus {
 }
 
 /* ==========================================================================
-   HISTORY â€” SEARCH & FILTER TOOLBAR
+   HISTORY — SEARCH & FILTER TOOLBAR
    ========================================================================== */
 
 .history-toolbar {
@@ -2482,7 +2521,7 @@ textarea:focus {
   top: 50%;
   transform: translateY(-50%);
   font-size: 17px;
-  color: #777;
+  color: var(--icon-muted);
   pointer-events: none;
 }
 
@@ -2516,7 +2555,7 @@ textarea:focus {
   border-color: var(--accent);
   background: var(--bg-panel);
 
-  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.10);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.10);
 }
 
 .history-filter-row {
@@ -2547,7 +2586,7 @@ textarea:focus {
 
 .history-filter-select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.10);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.10);
 }
 
 .history-filter-select option {
@@ -2573,7 +2612,7 @@ textarea:focus {
 
 
 /* ============================================================================
-   PROGRESS â€” TRAINING ANALYTICS
+   PROGRESS — TRAINING ANALYTICS
 ============================================================================ */
 
 .progress-overview {
@@ -2593,8 +2632,8 @@ textarea:focus {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.02),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.02),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -2633,7 +2672,8 @@ textarea:focus {
 
   color: var(--accent);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 8px;
   font-weight: normal;
   letter-spacing: 1px;
@@ -2648,14 +2688,15 @@ textarea:focus {
 
   letter-spacing: -0.5px;
 
-  color: #f2f2f2;
+  color: var(--text-strong);
 }
 
 
 .progress-stat-value {
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 24px;
   font-weight: normal;
   letter-spacing: 0.4px;
@@ -2693,8 +2734,8 @@ textarea {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.02),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--sheen-rgb), 0.02),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -2719,7 +2760,8 @@ textarea {
 .progress-panel-header .panel-title {
   color: var(--accent);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 10px;
   font-weight: normal;
   letter-spacing: 0.8px;
@@ -2758,7 +2800,7 @@ textarea {
 }
 
 .progress-activity-row:hover {
-  background: rgba(255, 193, 7, 0.025);
+  background: rgba(var(--accent-rgb), 0.025);
 }
 
 
@@ -2772,7 +2814,8 @@ textarea {
 
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 10px;
   font-weight: normal;
   letter-spacing: 0.4px;
@@ -2818,7 +2861,7 @@ textarea {
 
 
 /* ============================================================================
-   PROGRESS â€” MOBILE
+   PROGRESS — MOBILE
 ============================================================================ */
 
 @media (max-width: 520px) {
@@ -2875,7 +2918,7 @@ textarea {
 
 }
 /* ============================================================================
-   RECOMPOSITION â€” MOBILE-ONLY WORKOUT SYSTEM
+   RECOMPOSITION — MOBILE-ONLY WORKOUT SYSTEM
    ============================================================================ */
 
 .weekly-schedule {
@@ -3029,8 +3072,8 @@ textarea {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.025),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.025),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -3065,7 +3108,8 @@ textarea {
 
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 13px;
   font-weight: normal;
   letter-spacing: 0.6px;
@@ -3107,7 +3151,8 @@ textarea {
 .goal-target-grid strong {
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 11px;
   font-weight: normal;
 }
@@ -3181,7 +3226,7 @@ textarea {
 .goal-form-actions .secondary-btn:hover {
   color: var(--accent);
 
-  background: rgba(255, 193, 7, 0.04);
+  background: rgba(var(--accent-rgb), 0.04);
 
   border-color: var(--border-accent);
 }
@@ -3192,9 +3237,9 @@ textarea {
 .goal-actions .btn-delete-goal:hover {
   color: var(--danger);
 
-  background: rgba(255, 82, 82, 0.06);
+  background: rgba(var(--danger-rgb), 0.06);
 
-  border-color: rgba(255, 82, 82, 0.30);
+  border-color: rgba(var(--danger-rgb), 0.30);
 }
 
 
@@ -3208,8 +3253,8 @@ textarea {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 193, 7, 0.025),
-      rgba(255, 255, 255, 0.008)
+      rgba(var(--accent-rgb), 0.025),
+      rgba(var(--sheen-rgb), 0.008)
     ),
     var(--bg-panel);
 
@@ -3224,7 +3269,8 @@ textarea {
 
   color: var(--text-primary);
 
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 13px;
   font-weight: normal;
   letter-spacing: 0.5px;
@@ -3287,7 +3333,7 @@ textarea {
   border-color: var(--accent);
 
   box-shadow:
-    0 0 0 2px rgba(255, 193, 7, 0.10);
+    0 0 0 2px rgba(var(--accent-rgb), 0.10);
 }
 
 
@@ -3306,7 +3352,7 @@ textarea {
   min-height: 34px;
   padding: 0 12px;
 
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
 
   border: 1px solid var(--accent);
@@ -3372,7 +3418,7 @@ textarea {
 }
 
 /* ==========================================================================
-   BATMAN FOREVER â€” MAJOR HEADINGS
+   BATMAN FOREVER — MAJOR HEADINGS
    ========================================================================== */
 
 .topbar-title,
@@ -3388,7 +3434,8 @@ textarea {
 .progress-activity-name,
 .goal-card-header h3,
 .goal-form h3 {
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-weight: normal;
 }
 
@@ -3396,7 +3443,8 @@ textarea {
 .goal-card-header h3,
 .goal-form .section-kicker,
 .goal-form h3 {
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-weight: normal;
 }
 
@@ -3422,7 +3470,7 @@ textarea {
 }
 
 /* ==========================================================================
-   19. MISSING STYLES (added) â€” splash, session logger, settings, progress
+   19. MISSING STYLES (added) — splash, session logger, settings, progress
    Append-only: nothing above this line was modified.
    ========================================================================== */
 
@@ -3451,7 +3499,7 @@ textarea {
 }
 
 .primary-btn {
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
   border: 1px solid var(--accent);
 }
@@ -3482,8 +3530,8 @@ textarea {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 50% 35%, rgba(255,193,7,.12), transparent 45%),
-    #08090c;
+    radial-gradient(circle at 50% 35%, rgba(var(--accent-rgb), .12), transparent 45%),
+    var(--bg-main);
   opacity: 1;
   visibility: visible;
   transition: opacity .45s ease, visibility .45s ease;
@@ -3508,17 +3556,19 @@ textarea {
   place-items: center;
   width: 72px;
   height: 72px;
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
   border-radius: 16px;
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 38px;
-  box-shadow: 0 0 40px rgba(255,193,7,.25);
+  box-shadow: 0 0 40px rgba(var(--accent-rgb), .25);
 }
 
 .splash-name {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 22px;
   letter-spacing: 4px;
 }
@@ -3551,7 +3601,8 @@ textarea {
 .section-eyebrow {
   margin-bottom: 5px;
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -3559,7 +3610,8 @@ textarea {
 
 .section-header h2 {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: clamp(26px, 4vw, 38px);
   font-weight: normal;
   letter-spacing: 1px;
@@ -3599,7 +3651,8 @@ textarea {
 
 .history-empty-state h3 {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 15px;
   font-weight: normal;
   letter-spacing: 1px;
@@ -3639,14 +3692,16 @@ textarea {
 .workout-session-eyebrow {
   margin-bottom: 5px;
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 10px;
   letter-spacing: 2px;
 }
 
 .workout-session-header h2 {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 26px;
   font-weight: normal;
   letter-spacing: 1px;
@@ -3666,7 +3721,7 @@ textarea {
   margin-bottom: 16px;
   padding: 6px 12px;
   color: var(--accent);
-  background: rgba(255,193,7,.08);
+  background: rgba(var(--accent-rgb), .08);
   border: 1px solid var(--border-accent);
   border-radius: 999px;
   font-size: 10px;
@@ -3687,7 +3742,7 @@ textarea {
   margin-bottom: 14px;
   padding: 16px;
   background:
-    linear-gradient(145deg, rgba(255,255,255,.025), rgba(255,255,255,.008)),
+    linear-gradient(145deg, rgba(var(--sheen-rgb), .025), rgba(var(--sheen-rgb), .008)),
     var(--bg-panel);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
@@ -3705,14 +3760,16 @@ textarea {
   display: block;
   margin-bottom: 4px;
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 10px;
   letter-spacing: 2px;
 }
 
 .workout-session-exercise-header h3 {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 18px;
   font-weight: normal;
   letter-spacing: .8px;
@@ -3738,7 +3795,8 @@ textarea {
 
 .workout-previous-title {
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 9px;
   letter-spacing: 1.5px;
 }
@@ -3792,9 +3850,10 @@ textarea {
   place-items: center;
   height: 34px;
   color: var(--accent);
-  background: rgba(255,193,7,.08);
+  background: rgba(var(--accent-rgb), .08);
   border-radius: 6px;
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 12px;
 }
 
@@ -3841,7 +3900,7 @@ textarea {
 }
 .workout-set-remove-button:hover:not(:disabled) {
   color: var(--danger);
-  border-color: rgba(255,82,82,.4);
+  border-color: rgba(var(--danger-rgb), .4);
 }
 
 .workout-set-actions {
@@ -3865,7 +3924,7 @@ textarea {
 .workout-primary-button {
   width: 100%;
   min-height: 48px;
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 8px;
@@ -3874,7 +3933,7 @@ textarea {
   font-weight: 700;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  box-shadow: 0 8px 24px rgba(0,0,0,.5), 0 4px 14px rgba(255,193,7,.15);
+  box-shadow: 0 8px 24px rgba(0,0,0,.5), 0 4px 14px rgba(var(--accent-rgb), .15);
 }
 .workout-primary-button:hover:not(:disabled) {
   background: var(--accent-bright);
@@ -3889,7 +3948,8 @@ textarea {
 }
 .workout-empty-state h3 {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-weight: normal;
 }
 
@@ -3903,7 +3963,8 @@ textarea {
 .settings-group-title {
   margin-bottom: 10px;
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 10px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -3920,7 +3981,7 @@ textarea {
   text-align: left;
   color: var(--text-primary);
   background:
-    linear-gradient(145deg, rgba(255,193,7,.025), rgba(255,255,255,.008)),
+    linear-gradient(145deg, rgba(var(--accent-rgb), .025), rgba(var(--sheen-rgb), .008)),
     var(--bg-panel);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
@@ -3942,7 +4003,8 @@ textarea {
 
 .settings-card-title {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 14px;
   letter-spacing: .8px;
 }
@@ -4013,7 +4075,8 @@ textarea {
 .settings-account-label {
   margin-bottom: 10px;
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 9px;
   letter-spacing: 1.5px;
 }
@@ -4043,8 +4106,8 @@ textarea {
 }
 #account-logout-button {
   color: var(--danger);
-  border-color: rgba(255,82,82,.3);
-  background: rgba(255,82,82,.06);
+  border-color: rgba(var(--danger-rgb), .3);
+  background: rgba(var(--danger-rgb), .06);
 }
 
 
@@ -4064,7 +4127,8 @@ textarea {
 
 .profile-section-title {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 18px;
   font-weight: normal;
   letter-spacing: .8px;
@@ -4088,7 +4152,7 @@ textarea {
 .measurement-form > .btn-primary {
   grid-column: 1 / -1;
   min-height: 44px;
-  color: #08090c;
+  color: var(--on-accent);
   background: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 6px;
@@ -4146,8 +4210,8 @@ textarea {
   font-size: 13px;
 }
 .progress-panel input:focus {
-  border-color: rgba(255,193,7,.65);
-  box-shadow: 0 0 0 3px rgba(255,193,7,.07);
+  border-color: rgba(var(--accent-rgb), .65);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .07);
 }
 .progress-panel .primary-btn {
   width: 100%;
@@ -4169,7 +4233,8 @@ textarea {
 
 .weekly-volume-label {
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 9px;
   letter-spacing: 1.3px;
 }
@@ -4177,7 +4242,8 @@ textarea {
 .weekly-volume-value {
   margin-top: 8px;
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 22px;
   line-height: 1;
 }
@@ -4244,7 +4310,8 @@ textarea {
 
 .strength-progress-detail-label {
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 9px;
   letter-spacing: 1.3px;
 }
@@ -4252,7 +4319,8 @@ textarea {
 .strength-progress-detail-value {
   margin-top: 8px;
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 16px;
 }
 
@@ -4269,7 +4337,7 @@ textarea {
   gap: 12px;
   margin-top: 12px;
   padding: 12px 14px;
-  background: rgba(255,193,7,.06);
+  background: rgba(var(--accent-rgb), .06);
   border: 1px solid var(--border-accent);
   border-radius: 8px;
   font-size: 10px;
@@ -4278,7 +4346,8 @@ textarea {
 }
 .strength-progress-result strong {
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 16px;
   font-weight: normal;
 }
@@ -4306,7 +4375,8 @@ textarea {
 
 .personal-record-name {
   color: var(--text-primary);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 14px;
   letter-spacing: .5px;
   overflow-wrap: anywhere;
@@ -4325,7 +4395,8 @@ textarea {
 
 .personal-record-1rm-label {
   color: var(--accent);
-  font-family: "Batman Forever", sans-serif;
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
   font-size: 8px;
   letter-spacing: 1.2px;
 }
@@ -4368,7 +4439,7 @@ textarea {
 
 
 /* ==========================================================================
-   20. DESIGN SYSTEM FOUNDATION (Step 1) â€” tokens, shared components, baseline
+   20. DESIGN SYSTEM FOUNDATION (Step 1) — tokens, shared components, baseline
    Additive. Uses :where() for the global baseline (zero specificity), so any
    existing, more specific rule still wins. Nothing above is modified.
    ========================================================================== */
@@ -4440,12 +4511,12 @@ textarea {
 }
 
 :where(input, select, textarea)::placeholder {
-  color: #50535b;
+  color: var(--placeholder);
 }
 
 :where(input, select, textarea, button, a):focus-visible {
   outline: none;
-  border-color: rgba(255, 193, 7, .65);
+  border-color: rgba(var(--accent-rgb), .65);
   box-shadow: var(--focus-ring);
 }
 
@@ -4509,7 +4580,7 @@ textarea {
 .card {
   padding: var(--space-4);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, .025), rgba(255, 255, 255, .008)),
+    linear-gradient(145deg, rgba(var(--sheen-rgb), .025), rgba(var(--sheen-rgb), .008)),
     var(--bg-panel);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
@@ -4578,16 +4649,16 @@ textarea {
   animation: rc-pulse 1.4s ease-in-out infinite;
 }
 .error-state {
-  color: #ff8a80;
+  color: var(--danger-text);
   border-style: solid;
-  border-color: rgba(255, 82, 82, .35);
-  background: rgba(255, 82, 82, .06);
+  border-color: rgba(var(--danger-rgb), .35);
+  background: rgba(var(--danger-rgb), .06);
 }
 .success-state {
-  color: #8ee6a0;
+  color: var(--success-text);
   border-style: solid;
-  border-color: rgba(76, 217, 100, .35);
-  background: rgba(76, 217, 100, .06);
+  border-color: rgba(var(--success-rgb), .35);
+  background: rgba(var(--success-rgb), .06);
 }
 
 @keyframes rc-pulse {
@@ -4602,7 +4673,7 @@ textarea {
 
 
 /* ==========================================================================
-   21. DASHBOARD (Step 2) â€” built on section 20 tokens
+   21. DASHBOARD (Step 2) — built on section 20 tokens
    ========================================================================== */
 
 #dashboard-content .page-header { margin-bottom: var(--space-5); }
@@ -4640,7 +4711,7 @@ textarea {
 .dash-today-card {
   border-color: var(--border-accent);
   background:
-    linear-gradient(145deg, rgba(255, 193, 7, .06), rgba(255, 255, 255, .01)),
+    linear-gradient(145deg, rgba(var(--accent-rgb), .06), rgba(var(--sheen-rgb), .01)),
     var(--bg-panel);
 }
 .dash-today-card.is-done {
@@ -4783,7 +4854,7 @@ textarea {
 
 
 /* ==========================================================================
-   23. SETTINGS POLISH (Step 5) â€” remaining unstyled classes
+   23. SETTINGS POLISH (Step 5) — remaining unstyled classes
    ========================================================================== */
 
 .btn-edit-goal {
@@ -4842,7 +4913,7 @@ textarea {
 
 
 /* ==========================================================================
-   25. HISTORY â€” LOAD OLDER WORKOUTS (Task 3)
+   25. HISTORY — LOAD OLDER WORKOUTS (Task 3)
    ========================================================================== */
 
 .history-load-more {
@@ -4867,7 +4938,7 @@ textarea {
 
 
 /* ==========================================================================
-   26. EXERCISE PICKER (Step 3) â€” inline combobox in the workout plan editor
+   26. EXERCISE PICKER (Step 3) — inline combobox in the workout plan editor
    Renders INSIDE the exercise card (no floating popup), so it can never be
    clipped by the mobile keyboard or viewport. Closed state costs no height.
    ========================================================================== */
@@ -4918,12 +4989,12 @@ textarea {
 
 .exercise-picker-option:hover,
 .exercise-picker-option.is-active {
-  background: rgba(255, 193, 7, .08);
+  background: rgba(var(--accent-rgb), .08);
   border-left-color: var(--accent);
 }
 
 .exercise-picker-option:active {
-  background: rgba(255, 193, 7, .14);
+  background: rgba(var(--accent-rgb), .14);
 }
 
 .exercise-picker-option-name {
@@ -4951,7 +5022,7 @@ textarea {
 
 /* The "use as custom exercise" row is visually distinct from library rows */
 .exercise-picker-option--custom {
-  background: rgba(255, 255, 255, .02);
+  background: rgba(var(--sheen-rgb), .02);
   border-top: 1px dashed var(--border-medium);
 }
 
@@ -5013,8 +5084,8 @@ textarea {
   margin-top: var(--space-2);
   padding: var(--space-2) var(--space-3);
   color: var(--warning);
-  background: rgba(255, 179, 0, .08);
-  border: 1px solid rgba(255, 179, 0, .3);
+  background: rgba(var(--warning-rgb), .08);
+  border: 1px solid rgba(var(--warning-rgb), .3);
   border-radius: var(--radius-control);
   font-size: var(--text-xs);
 }
@@ -5031,7 +5102,7 @@ textarea {
 
 
 /* ==========================================================================
-   27. PROGRESS (read-only) â€” panel body
+   27. PROGRESS (read-only) — panel body
    ========================================================================== */
 
 .progress-panel-body {
@@ -5040,14 +5111,14 @@ textarea {
 
 
 /* ==========================================================================
-   28. NUTRITION RECOMMENDATION (Goals) â€” RECOMMENDED is not ACTIVE
+   28. NUTRITION RECOMMENDATION (Goals) — RECOMMENDED is not ACTIVE
    ========================================================================== */
 
 .nutrition-panel {
   margin-top: var(--space-4);
   padding: var(--space-4);
   background:
-    linear-gradient(145deg, rgba(255, 193, 7, .05), rgba(255, 255, 255, .01)),
+    linear-gradient(145deg, rgba(var(--accent-rgb), .05), rgba(var(--sheen-rgb), .01)),
     var(--bg-panel-2);
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-card);
@@ -5128,7 +5199,7 @@ textarea {
 
 .nutrition-compare-head {
   color: var(--text-muted);
-  background: rgba(255, 255, 255, .02);
+  background: rgba(var(--sheen-rgb), .02);
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 1px;
@@ -5174,7 +5245,7 @@ textarea {
 
 
 /* ==========================================================================
-   29. CURRENT WEIGHT READOUT (Profile) â€” read-only, comes from Weight History
+   29. CURRENT WEIGHT READOUT (Profile) — read-only, comes from Weight History
    ========================================================================== */
 
 .current-weight-readout {
@@ -5183,7 +5254,7 @@ textarea {
   gap: var(--space-2);
   padding: var(--space-4);
   background:
-    linear-gradient(145deg, rgba(255, 193, 7, .04), rgba(255, 255, 255, .01)),
+    linear-gradient(145deg, rgba(var(--accent-rgb), .04), rgba(var(--sheen-rgb), .01)),
     var(--bg-input);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-card);
