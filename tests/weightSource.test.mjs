@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import * as units from "../units.js";
 import * as engine from "../nutritionEngine.js";
 import * as currentWeight from "../currentWeight.js";
+import * as activeGoal from "../activeGoal.js";
+import * as progressMetrics from "../progressMetrics.js";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 
 const { resolveCurrentWeight, formatWeighInDate, describeCurrentWeight } = currentWeight;
@@ -273,6 +275,8 @@ function mount(world, file, html, extra = {}) {
     if (from === "./units.js") stubs[name] = units[name];
     else if (from === "./currentWeight.js") stubs[name] = currentWeight[name];
     else if (from === "./nutritionEngine.js") stubs[name] = engine[name];
+    else if (from === "./activeGoal.js") stubs[name] = activeGoal[name];
+    else if (from === "./progressMetrics.js") stubs[name] = progressMetrics[name];
     else if (name in world.api) stubs[name] = world.api[name];
     else if (name === "auth") stubs[name] = { currentUser: { uid: "u1" } };
     else if (name === "onAuthStateChanged") stubs[name] = () => {};

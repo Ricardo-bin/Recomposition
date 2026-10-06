@@ -1,8 +1,8 @@
 // ============================================================================
-// Integration tests: the REAL workout.js plan editor + exercise picker
+// Integration tests: the REAL workoutPlanEditor.js plan editor (Settings → Edit Workouts) + exercise picker
 // (in jsdom, with the data layer / Firebase replaced by in-memory stubs).
 //
-// The test loads workout.js's source, removes its import lines, and injects
+// The test loads workoutPlanEditor.js's source, removes its import lines, and injects
 // stubs. It drives the editor only through the page's own buttons and inputs.
 // Run:  node --test tests/*.test.mjs
 // ============================================================================
@@ -28,7 +28,7 @@ const JSDOM = await loadJSDOM();
 const skip = JSDOM ? false : SKIP_MESSAGE;
 
 const here = dirname(fileURLToPath(import.meta.url));
-const WORKOUT_SOURCE = resolve(here, "..", "workout.js");
+const WORKOUT_SOURCE = resolve(here, "..", "workoutPlanEditor.js");
 
 const realLibrary = createExerciseLibrary({
   loadJson: async () =>
@@ -67,7 +67,7 @@ const makePlan = (exercises, extra = {}) => ({
 });
 
 async function boot({ plans = [], library = realLibrary, source = WORKOUT_SOURCE } = {}) {
-  const dom = new JSDOM(`<div id="workout-content"></div>`, { url: "http://localhost/" });
+  const dom = new JSDOM(`<div id="settings-workouts-page"></div>`, { url: "http://localhost/" });
   const { window } = dom;
   const { document } = window;
 
@@ -118,7 +118,7 @@ async function boot({ plans = [], library = realLibrary, source = WORKOUT_SOURCE
     code
   )(document, window, ...Object.values(stubs));
 
-  await window.RecompositionWorkout.render();
+  await window.RecompositionWorkoutEditor.render();
   await settle();
 
   const q = selector => document.querySelector(selector);

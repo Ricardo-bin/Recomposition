@@ -5,6 +5,8 @@
 //
 //   - Search-as-you-type over the Exercise Library (via data/exerciseLibrary.js).
 //   - Up to 6 library rows, then the custom row (rules live in exercisePicker.js).
+//     ctx.allowCustom === false makes it library-only (no custom row).
+//     ctx.onResults(query, rowCount) is an optional hook after each search.
 //   - Mouse, touch, ArrowUp/ArrowDown, Enter, Escape.
 //   - Never owns plan data: it asks workout.js (through `ctx`) to change state.
 //   - Never blocks typing: if the library fails to load, a small note appears and
@@ -257,6 +259,7 @@ export function attachExercisePicker(listElement, ctx) {
 
     if (!query) {
       closeDropdown(wrap);
+      ctx.onResults?.("", 0);
       return;
     }
 
@@ -290,7 +293,12 @@ export function attachExercisePicker(listElement, ctx) {
 
     setNoteVisible(wrap, false);
 
-    const rows = buildPickerOptions(query, results);
+    const rows = buildPickerOptions(query, results, {
+      allowCustom: ctx.allowCustom !== false
+    });
+
+    // Optional hook (library-only pickers use it for a "no match" hint).
+    ctx.onResults?.(query, rows.length);
 
     if (rows.length === 0) {
       closeDropdown(wrap);

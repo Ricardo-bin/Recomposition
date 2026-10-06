@@ -225,6 +225,26 @@ container.innerHTML = `
       <button
   type="button"
   class="settings-card"
+  id="settings-workouts"
+>
+  <div class="settings-card-content">
+    <div class="settings-card-title">
+      Edit Workouts
+    </div>
+
+    <div class="settings-card-description">
+      Add, remove and reorder exercises in your plan
+    </div>
+  </div>
+
+  <div class="settings-card-arrow">
+    →
+  </div>
+</button>
+
+      <button
+  type="button"
+  class="settings-card"
   id="settings-goals"
 >
   <div class="settings-card-content">
@@ -1566,6 +1586,9 @@ function initializeSettingsNavigation() {
   const goalsCard = 
     document.getElementById("settings-goals");
 
+  const workoutsCard =
+    document.getElementById("settings-workouts");
+
   if (profileCard) {
   profileCard.addEventListener("click", async () => {
 
@@ -1616,6 +1639,25 @@ function initializeSettingsNavigation() {
     await renderSettingsMeasurements();
 
   });
+}
+
+if (workoutsCard) {
+
+  // PERMANENT plan editing lives here and only here.
+  workoutsCard.addEventListener(
+    "click",
+    async () => {
+
+      showSettingsSubPage(
+        "Edit Workouts",
+        `<div id="settings-workouts-page"></div>`
+      );
+
+      await window.RecompositionWorkoutEditor?.render();
+
+    }
+  );
+
 }
 
 if (goalsCard) {

@@ -13,6 +13,19 @@ import {
 import { auth } from "./firebase.js";
 
 import {
+  applyAlternative,
+  buildLogSession,
+  getPerformedExerciseId,
+  hasAlternative,
+  hasEnteredData,
+  libraryField,
+  normalizeAlternative,
+  restoreOriginal,
+  sanitizeSessionExercise,
+  validateReplacement
+} from "./alternativeToday.js";
+
+import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
@@ -199,6 +212,10 @@ function createWorkoutSession(plan) {
           name:
             exercise.name,
 
+          ...libraryField(
+            exercise
+          ),
+
           targetSets:
             exercise.sets,
 
@@ -253,32 +270,37 @@ async function loadPreviousPerformance() {
   await Promise.all(
 
     currentWorkoutSession.exercises.map(
-      async exercise => {
-
-        try {
-
-          exercise.previousLog =
-            await getPreviousWorkoutLog(
-              currentWorkoutSession.planId,
-              exercise.exerciseId,
-              currentWorkoutSession.date
-            );
-
-        } catch (error) {
-
-          console.error(
-            `Could not load previous performance for ${exercise.name}:`,
-            error
-          );
-
-          exercise.previousLog =
-            null;
-        }
-
-      }
+      loadPreviousForExercise
     )
 
   );
+}
+
+// Previous performance follows what is actually performed: a replaced
+// exercise only ever shows earlier sessions of that same replacement.
+async function loadPreviousForExercise(exercise) {
+
+  try {
+
+    exercise.previousLog =
+      await getPreviousWorkoutLog(
+        currentWorkoutSession.planId,
+        getPerformedExerciseId(
+          exercise
+        ),
+        currentWorkoutSession.date
+      );
+
+  } catch (error) {
+
+    console.error(
+      `Could not load previous performance for ${exercise.name}:`,
+      error
+    );
+
+    exercise.previousLog =
+      null;
+  }
 }
 
 
@@ -445,6 +467,11 @@ function renderExercises() {
 
             </div>
 
+            ${renderAlternativeToday(
+              exercise,
+              exerciseIndex
+            )}
+
             ${renderPreviousPerformance(
               exercise
             )}
@@ -491,6 +518,88 @@ function renderExercises() {
 
 
 // ============================================================================
+// ALTERNATIVE TODAY — card block
+// ----------------------------------------------------------------------------
+// Always makes it clear the change is for TODAY'S SESSION ONLY and shows the
+// planned exercise next to the replacement.
+// ============================================================================
+
+function renderAlternativeToday(
+  exercise,
+  exerciseIndex
+) {
+
+  const alternative =
+    normalizeAlternative(
+      exercise.alternativeToday
+    );
+
+  if (!alternative) {
+
+    return `
+      <div class="alt-today-actions">
+
+        <button
+          type="button"
+          class="workout-small-button"
+          data-alt-open="${exerciseIndex}"
+        >
+          ALTERNATIVE TODAY
+        </button>
+
+      </div>
+    `;
+  }
+
+  return `
+    <div
+      class="alt-today-banner"
+      data-alt-today="${exerciseIndex}"
+    >
+
+      <div class="alt-today-tag">
+        TODAY ONLY
+      </div>
+
+      <div class="alt-today-planned">
+        Alternative for
+        <strong>${escapeHtml(
+          alternative.original.name
+        )}</strong>
+      </div>
+
+      <div class="alt-today-note">
+        Your saved workout plan is unchanged.
+      </div>
+
+      <div class="alt-today-banner-actions">
+
+        <button
+          type="button"
+          class="workout-small-button"
+          data-alt-open="${exerciseIndex}"
+        >
+          Change
+        </button>
+
+        <button
+          type="button"
+          class="workout-small-button"
+          data-alt-restore="${exerciseIndex}"
+        >
+          Restore ${escapeHtml(
+            alternative.original.name
+          )}
+        </button>
+
+      </div>
+
+    </div>
+  `;
+}
+
+
+// ============================================================================
 // PREVIOUS PERFORMANCE
 // ============================================================================
 
@@ -516,7 +625,9 @@ function renderPreviousPerformance(
     exercise.previousLog.exercises?.find(
       item =>
         item.exerciseId ===
-        exercise.exerciseId
+        getPerformedExerciseId(
+          exercise
+        )
     );
 
 
@@ -774,7 +885,9 @@ function getPreviousSet(
     exercise.previousLog.exercises?.find(
       item =>
         item.exerciseId ===
-        exercise.exerciseId
+        getPerformedExerciseId(
+          exercise
+        )
     );
 
   if (
@@ -860,6 +973,42 @@ function attachSessionEvents() {
     );
 
   });
+
+
+  document
+    .querySelectorAll(
+      "[data-alt-open]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => openAlternativeSheet(
+          Number(
+            button.dataset.altOpen
+          )
+        )
+      );
+
+    });
+
+
+  document
+    .querySelectorAll(
+      "[data-alt-restore]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => restoreOriginalExercise(
+          Number(
+            button.dataset.altRestore
+          )
+        )
+      );
+
+    });
 
 
 document
@@ -1265,6 +1414,610 @@ function rerenderSessionExercises(
 
 
 // ============================================================================
+// ALTERNATIVE TODAY — actions
+// ----------------------------------------------------------------------------
+// Only the SESSION exercise changes. The saved workout plan is never read for
+// writing, never written, and not even imported here for update.
+// ============================================================================
+
+let alternativeSheet = null;
+
+// Loaded on demand: the library and picker are only needed when the sheet opens.
+async function loadAlternativePicker() {
+
+  const [pickerUi, library] =
+    await Promise.all([
+      import("./exercisePickerUI.js"),
+      import("./data/exerciseLibrary.js")
+    ]);
+
+  return {
+    attachExercisePicker:
+      pickerUi.attachExercisePicker,
+    library
+  };
+}
+
+function closeAlternativeSheet() {
+
+  if (!alternativeSheet) {
+    return;
+  }
+
+  const { root, controller, onKeyDown, opener } =
+    alternativeSheet;
+
+  alternativeSheet = null;
+
+  document.removeEventListener(
+    "keydown",
+    onKeyDown,
+    true
+  );
+
+  try {
+    controller?.destroy();
+  } catch (error) {
+    // Nothing to clean up.
+  }
+
+  root.remove();
+
+  opener?.focus?.();
+}
+
+async function applyAlternativeToday(
+  exerciseIndex,
+  slotId,
+  libraryExerciseId,
+  library
+) {
+
+  const session =
+    currentWorkoutSession;
+
+  // The session may have been closed or changed while the sheet was open.
+  if (
+    !session ||
+    session.exercises[exerciseIndex]
+      ?.exerciseId !== slotId
+  ) {
+    return {
+      ok: false,
+      message:
+        "This workout changed. Please try again."
+    };
+  }
+
+  // Always use the library's own record, never the picker's copy.
+  let libraryExercise = null;
+
+  try {
+    libraryExercise =
+      await library.getExercise(
+        libraryExerciseId
+      );
+  } catch (error) {
+    console.error(
+      "Could not read the exercise library:",
+      error
+    );
+  }
+
+  if (!libraryExercise) {
+    return {
+      ok: false,
+      message:
+        "That exercise could not be loaded from the library. Nothing was changed."
+    };
+  }
+
+  // The session can have changed during the await.
+  if (
+    currentWorkoutSession !== session ||
+    session.exercises[exerciseIndex]
+      ?.exerciseId !== slotId
+  ) {
+    return {
+      ok: false,
+      message:
+        "This workout changed. Please try again."
+    };
+  }
+
+  const result =
+    applyAlternative(
+      session,
+      exerciseIndex,
+      libraryExercise
+    );
+
+  if (!result.ok) {
+    return result;
+  }
+
+  session.exercises[exerciseIndex] =
+    result.exercise;
+
+  persistActiveSession();
+
+  await loadPreviousForExercise(
+    session.exercises[exerciseIndex]
+  );
+
+  rerenderSessionExercises();
+
+  return { ok: true };
+}
+
+async function restoreOriginalExercise(
+  exerciseIndex
+) {
+
+  const exercise =
+    currentWorkoutSession
+      ?.exercises[exerciseIndex];
+
+  if (
+    !exercise ||
+    !hasAlternative(exercise)
+  ) {
+    return;
+  }
+
+  const original =
+    normalizeAlternative(
+      exercise.alternativeToday
+    ).original.name;
+
+  if (
+    hasEnteredData(exercise) &&
+    !window.confirm(
+      `Restore ${original}? Sets entered for ${exercise.name} will be cleared.`
+    )
+  ) {
+    return;
+  }
+
+  currentWorkoutSession.exercises[exerciseIndex] =
+    restoreOriginal(exercise);
+
+  persistActiveSession();
+
+  await loadPreviousForExercise(
+    currentWorkoutSession.exercises[exerciseIndex]
+  );
+
+  rerenderSessionExercises();
+}
+
+async function openAlternativeSheet(
+  exerciseIndex
+) {
+
+  const exercise =
+    currentWorkoutSession
+      ?.exercises[exerciseIndex];
+
+  if (!exercise) {
+    return;
+  }
+
+  closeAlternativeSheet();
+
+  const slotId =
+    exercise.exerciseId;
+
+  const alternative =
+    normalizeAlternative(
+      exercise.alternativeToday
+    );
+
+  const plannedName =
+    alternative
+      ? alternative.original.name
+      : exercise.name;
+
+  const root =
+    document.createElement("div");
+
+  root.className =
+    "alt-sheet-backdrop";
+
+  root.id =
+    "alt-today-sheet";
+
+  root.innerHTML = `
+    <div
+      class="alt-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="alt-sheet-title"
+    >
+
+      <div class="alt-sheet-header">
+
+        <h3 id="alt-sheet-title">
+          ALTERNATIVE TODAY
+        </h3>
+
+        <button
+          type="button"
+          class="workout-small-button"
+          data-alt-cancel
+        >
+          Cancel
+        </button>
+
+      </div>
+
+      <div class="alt-sheet-current">
+        ${escapeHtml(plannedName)}
+      </div>
+
+      <p class="alt-sheet-lead">
+        Choose a temporary replacement for today's session.
+      </p>
+
+      <p class="alt-sheet-lead alt-sheet-lead--strong">
+        Your saved workout plan will NOT change.
+        The replacement applies to TODAY ONLY.
+      </p>
+
+      <div data-alt-picker-host>
+
+        <div class="exercise-picker">
+
+          <input
+            type="text"
+            class="form-input exercise-name-input"
+            data-exercise-index="0"
+            data-field="name"
+            role="combobox"
+            aria-label="Search the exercise library"
+            aria-expanded="false"
+            aria-autocomplete="list"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            enterkeyhint="search"
+            placeholder="Search the exercise library"
+          >
+
+          <ul
+            class="exercise-picker-list"
+            role="listbox"
+          ></ul>
+
+          <div class="exercise-link-status"></div>
+
+          <div
+            class="exercise-picker-note"
+            hidden
+          >
+            The exercise library could not be loaded.
+            Your workout was not changed.
+          </div>
+
+        </div>
+
+      </div>
+
+      <div
+        class="alt-sheet-hint"
+        data-alt-hint
+        hidden
+      ></div>
+
+      <div
+        class="alt-sheet-summary"
+        data-alt-summary
+        hidden
+      ></div>
+
+      <div
+        class="alt-sheet-error"
+        data-alt-error
+        role="alert"
+        hidden
+      ></div>
+
+      <div class="alt-sheet-actions">
+
+        <button
+          type="button"
+          class="workout-primary-button"
+          data-alt-confirm
+          disabled
+        >
+          USE THIS TODAY
+        </button>
+
+        <button
+          type="button"
+          class="workout-small-button alt-sheet-cancel"
+          data-alt-cancel
+        >
+          CANCEL
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+  const part = selector =>
+    root.querySelector(selector);
+
+  const setText = (selector, text) => {
+
+    const element =
+      part(selector);
+
+    element.textContent =
+      text || "";
+
+    element.hidden =
+      !text;
+  };
+
+  let pending = null;
+
+  let busy = false;
+
+  const setSummary = (original, replacement, warning) => {
+
+    const element =
+      part("[data-alt-summary]");
+
+    element.hidden =
+      !replacement;
+
+    element.innerHTML =
+      replacement
+        ? `
+          <div class="alt-summary-label">
+            TODAY'S ALTERNATIVE
+          </div>
+
+          <div class="alt-summary-from">
+            ${escapeHtml(original)}
+          </div>
+
+          <div class="alt-summary-arrow" aria-hidden="true">
+            ↓
+          </div>
+
+          <div class="alt-summary-to">
+            ${escapeHtml(replacement)}
+          </div>
+
+          <div class="alt-summary-note">
+            Your saved workout plan is unchanged.
+            ${warning ? escapeHtml(warning) : ""}
+          </div>
+        `
+        : "";
+  };
+
+  const clearPending = () => {
+
+    pending = null;
+
+    part("[data-alt-confirm]")
+      .disabled = true;
+
+    setSummary("", "");
+    setText("[data-alt-error]", "");
+  };
+
+  const onKeyDown = event => {
+
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    // First Escape closes an open results list; the next one closes the sheet.
+    if (root.querySelector(".exercise-picker-list.is-open")) {
+      return;
+    }
+
+    event.preventDefault();
+
+    closeAlternativeSheet();
+  };
+
+  document.body.appendChild(root);
+
+  alternativeSheet = {
+    root,
+    controller: null,
+    onKeyDown,
+    opener:
+      document.querySelector(
+        `[data-alt-open="${exerciseIndex}"]`
+      )
+  };
+
+  document.addEventListener(
+    "keydown",
+    onKeyDown,
+    true
+  );
+
+  root
+    .querySelectorAll("[data-alt-cancel]")
+    .forEach(button =>
+      button.addEventListener(
+        "click",
+        closeAlternativeSheet
+      )
+    );
+
+  root.addEventListener(
+    "click",
+    event => {
+
+      if (event.target === root) {
+        closeAlternativeSheet();
+      }
+    }
+  );
+
+  const input =
+    part(".exercise-name-input");
+
+  let deps;
+
+  try {
+    deps =
+      await loadAlternativePicker();
+  } catch (error) {
+
+    console.error(
+      "Could not load the exercise picker:",
+      error
+    );
+
+    part(".exercise-picker-note")
+      .hidden = false;
+
+    input.disabled = true;
+
+    return;
+  }
+
+  // Closed (or replaced by another sheet) while the picker was loading.
+  if (alternativeSheet?.root !== root) {
+    return;
+  }
+
+  alternativeSheet.controller =
+    deps.attachExercisePicker(
+      part("[data-alt-picker-host]"),
+      {
+        library: deps.library,
+
+        // Library exercises only: no custom row.
+        allowCustom: false,
+
+        // The picker reads this to fill the input and the status line.
+        getExercise: () =>
+          pending
+            ? {
+                id: "alternative-today",
+                name: pending.name,
+                libraryExerciseId: pending.id
+              }
+            : { id: "alternative-today", name: input.value },
+
+        // Typing again discards any earlier choice.
+        onNameInput: () => clearPending(),
+
+        onSelect: (index, libraryExercise) => {
+
+          const check =
+            validateReplacement(
+              currentWorkoutSession,
+              exerciseIndex,
+              libraryExercise
+            );
+
+          if (!check.ok) {
+
+            pending = null;
+
+            part("[data-alt-confirm]")
+              .disabled = true;
+
+            setSummary("", "");
+            setText("[data-alt-error]", check.message);
+
+            return;
+          }
+
+          pending = libraryExercise;
+
+          setText("[data-alt-error]", "");
+
+          const current =
+            currentWorkoutSession
+              ?.exercises[exerciseIndex];
+
+          const warning =
+            hasEnteredData(current)
+              ? ` Sets already entered for ${current.name} will be cleared.`
+              : "";
+
+          setSummary(
+            plannedName,
+            libraryExercise.name,
+            warning.trim()
+          );
+
+          part("[data-alt-confirm]")
+            .disabled = false;
+        },
+
+        // Not reachable (allowCustom is false); kept so the picker contract holds.
+        onChooseCustom: () => {},
+
+        onResults: (query, count) => {
+
+          setText(
+            "[data-alt-hint]",
+            query && count === 0
+              ? `No library exercise matches "${query}".`
+              : ""
+          );
+        }
+      }
+    );
+
+  part("[data-alt-confirm]")
+    .addEventListener(
+      "click",
+      async () => {
+
+        if (!pending || busy) {
+          return;
+        }
+
+        busy = true;
+
+        part("[data-alt-confirm]")
+          .disabled = true;
+
+        const result =
+          await applyAlternativeToday(
+            exerciseIndex,
+            slotId,
+            pending.id,
+            deps.library
+          );
+
+        busy = false;
+
+        if (result.ok) {
+
+          closeAlternativeSheet();
+
+          return;
+        }
+
+        // Fail safely: the session and the plan are untouched.
+        pending = null;
+
+        setSummary("", "");
+        setText("[data-alt-error]", result.message);
+      }
+    );
+
+  input.focus();
+}
+
+
+// ============================================================================
 // CLOSE SESSION
 // ============================================================================
 
@@ -1274,6 +2027,8 @@ function closeWorkoutSession({ keepStored = false } = {}) {
   if (!keepStored) {
     clearActiveSession();
   }
+
+  closeAlternativeSheet();
 
   setSessionViewActive(false);
 
@@ -1383,7 +2138,9 @@ async function handleCompleteWorkout() {
 
         const logId =
       await createWorkoutLog(
-        currentWorkoutSession
+        buildLogSession(
+          currentWorkoutSession
+        )
       );
 
     // The log now exists: drop the temporary session immediately.
@@ -1626,11 +2383,13 @@ async function restoreActiveSession(uid) {
     session.date = new Date(savedAt || Date.now());
   }
 
-  session.exercises = session.exercises.map(exercise => ({
-    ...exercise,
-    sets: Array.isArray(exercise.sets) ? exercise.sets : [],
-    previousLog: null
-  }));
+  session.exercises = session.exercises.map(exercise =>
+    sanitizeSessionExercise({
+      ...exercise,
+      sets: Array.isArray(exercise.sets) ? exercise.sets : [],
+      previousLog: null
+    })
+  );
 
   // The page was refreshed WHILE the workout was being saved.
   // If that log reached Firestore, do not offer the session again.

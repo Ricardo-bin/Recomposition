@@ -182,10 +182,11 @@ export function findMatchedAlias(libraryExercise, query) {
 // an exact (normalised) match of a library exercise NAME. An exact alias match
 // still shows it, so the user can always choose a custom "Squat" on purpose.
 // An empty box yields no rows (no browse list in this step).
+// { allowCustom: false } never adds the custom row (library-only pickers).
 export function buildPickerOptions(
   query,
   searchResults,
-  { max = PICKER_MAX_RESULTS } = {}
+  { max = PICKER_MAX_RESULTS, allowCustom = true } = {}
 ) {
   const text = typeof query === "string" ? query.trim() : "";
 
@@ -211,7 +212,8 @@ export function buildPickerOptions(
     exercise => normalizeExerciseText(exercise.name) === normalized
   );
 
-  if (!exactNameMatch) {
+  // allowCustom: false = library-only pickers (Alternative Today).
+  if (allowCustom && !exactNameMatch) {
     options.push({ type: "custom", name: text });
   }
 

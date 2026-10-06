@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import * as progressMetrics from "../progressMetrics.js";
 import * as units from "../units.js";
 import * as currentWeight from "../currentWeight.js";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
@@ -45,6 +46,8 @@ function loadModule(file, { html, overrides = {}, auth = { currentUser: { uid: "
   for (const [name, from] of names) {
     if (from === "./units.js") {
       stubs[name] = units[name];
+    } else if (from === "./progressMetrics.js") {
+      stubs[name] = progressMetrics[name];
     } else if (from === "./currentWeight.js") {
       stubs[name] = currentWeight[name];
     } else if (name in overrides) {

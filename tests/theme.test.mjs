@@ -7,7 +7,10 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createThemeManager, THEME_STORAGE_KEY, THEME_CHANGED_EVENT } from "../theme.js";
-import { THEME_ASSETS, ASSET_KEYS } from "../themeAssets.js";
+import { THEME_ASSETS, ASSET_KEYS, ASSET_VERSION } from "../themeAssets.js";
+
+// Local artwork is requested as <file>?v=<ASSET_VERSION> (cache-busting).
+const V = `?v=${ASSET_VERSION}`;
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 
 const JSDOM = await loadJSDOM();
@@ -107,9 +110,9 @@ test("watch() is the framework-free useThemeAssets: runs now and on every change
   t.manager.set("linkin-park");
 
   assert.deepEqual(seen, [
-    ["batman", "assets/themes/batman/logo.svg"],
-    ["linkin-park", "assets/themes/linkin-park/logo.svg"],
-    ["batman", "assets/themes/batman/logo.svg"]
+    ["batman", "assets/themes/batman/logo.svg" + V],
+    ["linkin-park", "assets/themes/linkin-park/logo.svg" + V],
+    ["batman", "assets/themes/batman/logo.svg" + V]
   ]);
 });
 
@@ -137,13 +140,13 @@ test("CSS variables hold the ACTIVE theme's artwork and change with the theme", 
   t.manager.init();
 
   for (const key of ASSET_KEYS) {
-    assert.equal(t.cssVar(key), `url("assets/themes/batman/${key === "logo" ? "logo.svg" : key + ".webp"}")`);
+    assert.equal(t.cssVar(key), `url("assets/themes/batman/${key === "logo" ? "logo.svg" : key + ".webp"}${V}")`);
   }
 
   t.manager.set("linkin-park");
 
-  assert.equal(t.cssVar("background"), 'url("assets/themes/linkin-park/background.webp")');
-  assert.equal(t.cssVar("logo"), 'url("assets/themes/linkin-park/logo.svg")');
+  assert.equal(t.cssVar("background"), `url("assets/themes/linkin-park/background.webp${V}")`);
+  assert.equal(t.cssVar("logo"), `url("assets/themes/linkin-park/logo.svg${V}")`);
   assert.ok(!t.cssVar("hero").includes("batman"));
 });
 
@@ -165,7 +168,7 @@ test("an image binds to the active theme's file and stays hidden until it really
   const logo = t.img("logo");
   t.manager.init();
 
-  assert.equal(logo.getAttribute("src"), "assets/themes/batman/logo.svg");
+  assert.equal(logo.getAttribute("src"), "assets/themes/batman/logo.svg" + V);
   assert.equal(logo.hidden, true, "no broken-image icon while loading");
   assert.equal(logo.dataset.themeAssetState, "loading");
 
@@ -184,15 +187,15 @@ test("switching the theme swaps the image automatically (no component code invol
 
   t.manager.set("linkin-park");
 
-  assert.equal(logo.getAttribute("src"), "assets/themes/linkin-park/logo.svg");
-  assert.equal(hero.getAttribute("src"), "assets/themes/linkin-park/hero.webp");
+  assert.equal(logo.getAttribute("src"), "assets/themes/linkin-park/logo.svg" + V);
+  assert.equal(hero.getAttribute("src"), "assets/themes/linkin-park/hero.webp" + V);
   assert.equal(logo.hidden, true, "hidden again until the new file loads");
 
   t.fire(logo, "load");
   assert.equal(logo.hidden, false);
 
   t.manager.set("batman");
-  assert.equal(logo.getAttribute("src"), "assets/themes/batman/logo.svg");
+  assert.equal(logo.getAttribute("src"), "assets/themes/batman/logo.svg" + V);
 });
 
 test("a file that fails to load hides the element; it is NEVER replaced by the other theme's file", { skip }, () => {
@@ -222,7 +225,7 @@ test("asset configured as null: element is hidden and never requested", { skip }
   assert.equal(logo.hasAttribute("src"), false);
 
   t.manager.set("batman");
-  assert.equal(logo.getAttribute("src"), "assets/themes/batman/logo.svg", "and it comes back when a theme provides it");
+  assert.equal(logo.getAttribute("src"), "assets/themes/batman/logo.svg" + V, "and it comes back when a theme provides it");
 });
 
 test("a late load event from the PREVIOUS theme is ignored", { skip }, () => {
@@ -272,11 +275,11 @@ test("elements added after init are bound automatically and follow later theme s
 
   const late = t.document.getElementById("late");
 
-  assert.equal(late.getAttribute("src"), "assets/themes/batman/dashboard.webp");
+  assert.equal(late.getAttribute("src"), "assets/themes/batman/dashboard.webp" + V);
 
   t.manager.set("linkin-park");
 
-  assert.equal(late.getAttribute("src"), "assets/themes/linkin-park/dashboard.webp");
+  assert.equal(late.getAttribute("src"), "assets/themes/linkin-park/dashboard.webp" + V);
 });
 
 test("destroy() stops observing and notifying", { skip }, async () => {

@@ -14,6 +14,14 @@ import {
   normalizeWeightUnit
 } from "./units.js";
 
+import {
+  compareMeasurements,
+  compareVolume,
+  compareWeight,
+  getBestSet,
+  percentChange
+} from "./progressMetrics.js";
+
 
 // ============================================================================
 // HELPERS
@@ -37,6 +45,75 @@ function formatArms(entry) {
   const right = entry.rightArm;
   if (left != null && right != null) return `${left}/${right}`;
   return left ?? right ?? null;
+}
+
+// previous -> current -> change (objective numbers only; no percentage "progress").
+function signed(value, digits = 1) {
+  const rounded = Number(value.toFixed(digits));
+
+  return `${rounded > 0 ? "+" : ""}${rounded}`;
+}
+
+function renderWeightComparison(weightHistory, weightUnit) {
+  const result = compareWeight(weightHistory);
+
+  if (result.current === null) {
+    return "";
+  }
+
+  const show = kg => formatWeight(kg, weightUnit);
+
+  return `
+    <div class="progress-compare" data-compare="weight">
+      <div class="progress-compare-title">
+        BODY WEIGHT
+      </div>
+      <div class="progress-compare-row">
+        <span>${result.previous === null ? "—" : escapeHtml(show(result.previous))}</span>
+        <span class="progress-compare-arrow" aria-hidden="true">→</span>
+        <strong>${escapeHtml(show(result.current))}</strong>
+        <span class="progress-compare-change">
+          ${
+            result.change === null
+              ? "no previous weigh-in"
+              : escapeHtml(
+                  `${result.change > 0 ? "+" : result.change < 0 ? "−" : ""}${show(Math.abs(result.change))}`
+                )
+          }
+        </span>
+      </div>
+      <div class="progress-compare-note">
+        Body weight changes are not the same as body-composition changes.
+      </div>
+    </div>
+  `;
+}
+
+function renderMeasurementComparison(measurements) {
+  const rows = compareMeasurements(measurements);
+
+  if (rows.length === 0) {
+    return "";
+  }
+
+  return `
+    <div class="progress-compare" data-compare="measurements">
+      <div class="progress-compare-title">
+        PREVIOUS → CURRENT
+      </div>
+      ${rows.map(row => `
+        <div class="progress-compare-row" data-site="${escapeHtml(row.key)}">
+          <span class="progress-compare-site">${escapeHtml(row.label)}</span>
+          <span>${row.previous === null ? "—" : escapeHtml(Number(row.previous.toFixed(2)))}</span>
+          <span class="progress-compare-arrow" aria-hidden="true">→</span>
+          <strong>${escapeHtml(Number(row.current.toFixed(2)))}</strong>
+          <span class="progress-compare-change">
+            ${row.change === null ? "—" : escapeHtml(`${signed(row.change, 2)} in`)}
+          </span>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function getProgressContainer() {
@@ -434,10 +511,8 @@ const lastWeekVolume =
     0
   );
 
-const volumeChangePercent =
-  lastWeekVolume > 0
-    ? ((weeklyVolume - lastWeekVolume) / lastWeekVolume) * 100
-    : null;
+const volumeComparison =
+  compareVolume(weeklyVolume, lastWeekVolume);
 
     const startOfMonth =
   new Date(
@@ -692,7 +767,7 @@ const workoutsThisMonth =
       </div>
 
       <div class="panel-subtitle">
-        Compare your training volume with last week.
+        Training volume (weight × reps) this week vs last week. This compares the work you did, not muscle growth.
       </div>
     </div>
 
@@ -732,21 +807,19 @@ const workoutsThisMonth =
     </div>
 
 
-    <div class="weekly-volume-change">
-
+    <div class="weekly-volume-change" data-volume-comparison="${volumeComparison.status}">
       ${
-        volumeChangePercent === null
-          ? "No data from last week"
-          : `
+        volumeComparison.status === "changed"
+          ? `
             <span>
-              ${volumeChangePercent >= 0 ? "+" : ""}
-              ${volumeChangePercent.toFixed(1)}%
+              ${volumeComparison.percent >= 0 ? "+" : ""}${volumeComparison.percent.toFixed(1)}%
             </span>
-
-            compared with last week
+            training volume vs last week
           `
+          : volumeComparison.status === "no-previous"
+            ? "No volume logged last week to compare with"
+            : "No volume logged this week or last week"
       }
-
     </div>
 
   </div>
@@ -766,7 +839,7 @@ const workoutsThisMonth =
       </div>
 
       <div class="panel-subtitle">
-        Compare your latest and previous session.
+        Best set (highest estimated 1RM) in your latest vs previous session. Estimated 1RM is a training-performance estimate, not muscle growth.
       </div>
     </div>
 
@@ -904,6 +977,7 @@ const workoutsThisMonth =
           </div>
 
           <div class="progress-panel-body">
+            ${renderWeightComparison(weightHistory, weightUnit)}
             ${
               weightHistory.length
                 ? weightHistory.map(entry => `
@@ -954,6 +1028,7 @@ const workoutsThisMonth =
           </div>
 
           <div class="progress-panel-body">
+            ${renderMeasurementComparison(measurements)}
             ${
               measurements.length
           ? measurements.map(entry => `
@@ -1207,76 +1282,25 @@ function getStrengthProgress(exerciseHistory) {
     const latestSession = sessions[0];
     const previousSession = sessions[1];
 
-    const getBestSet = (session) => {
-
-      let bestSet = null;
-
-      session.sets.forEach(set => {
-
-        const weight = Number(set.weight);
-        const reps = Number(set.reps);
-
-        if (
-          !Number.isFinite(weight) ||
-          !Number.isFinite(reps) ||
-          weight <= 0 ||
-          reps <= 0
-        ) {
-          return;
-        }
-
-        const volume = weight * reps;
-
-        const estimatedOneRepMax =
-          weight * (1 + reps / 30);
-
-        if (
-          !bestSet ||
-          volume > bestSet.volume
-        ) {
-
-          bestSet = {
-            weight,
-            reps,
-            volume,
-            estimatedOneRepMax
-          };
-
-        }
-
-      });
-
-      return bestSet;
-    };
+    // Best set = highest ESTIMATED 1RM (see progressMetrics.js), not volume-load.
 
     const latestBest =
-      getBestSet(latestSession);
+      getBestSet(latestSession.sets);
 
     const previousBest =
-      getBestSet(previousSession);
+      getBestSet(previousSession.sets);
 
     if (!latestBest || !previousBest) {
       return;
     }
 
     const volumeChangePercent =
-      previousBest.volume > 0
-        ? (
-            (latestBest.volume - previousBest.volume) /
-            previousBest.volume
-          ) * 100
-        : null;
-
+      percentChange(latestBest.volume, previousBest.volume);
     const oneRepMaxChangePercent =
-      previousBest.estimatedOneRepMax > 0
-        ? (
-            (
-              latestBest.estimatedOneRepMax -
-              previousBest.estimatedOneRepMax
-            ) /
-            previousBest.estimatedOneRepMax
-          ) * 100
-        : null;
+      percentChange(
+        latestBest.estimatedOneRepMax,
+        previousBest.estimatedOneRepMax
+      );
 
     progression.push({
 

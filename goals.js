@@ -28,6 +28,11 @@ import {
   resolveCurrentWeight
 } from "./currentWeight.js";
 
+import {
+  findActiveGoal,
+  todayKey
+} from "./activeGoal.js";
+
 
 // ============================================================================
 // STATE
@@ -147,6 +152,11 @@ export async function loadGoals(container) {
 
 function renderGoals(container) {
 
+  // The goal the Dashboard is using right now (null when none applies today).
+  const currentGoalId =
+    findActiveGoal(goals, todayKey())?.id ?? null;
+
+
   container.innerHTML = `
 
     <div class="section-heading">
@@ -201,7 +211,7 @@ function renderGoals(container) {
             </div>
           `
 
-          : goals.map(renderGoalCard).join("")
+          : goals.map(goal => renderGoalCard(goal, goal.id === currentGoalId)).join("")
       }
 
     </div>
@@ -228,7 +238,7 @@ function renderGoals(container) {
 // GOAL CARD
 // ============================================================================
 
-function renderGoalCard(goal) {
+function renderGoalCard(goal, isCurrent = false) {
 
   return `
 
@@ -242,7 +252,7 @@ function renderGoalCard(goal) {
         <div>
 
           <div class="section-kicker">
-            GOAL
+            GOAL${isCurrent ? ` · <span class="goal-current-badge" data-current-goal>CURRENT TARGET</span>` : ""}
           </div>
 
           <h3>
@@ -289,7 +299,7 @@ function renderGoalCard(goal) {
 
       ${renderNutritionSourceLine(goal)}
 
-      <div class="goal-dates">
+      <div class="goal-dates" title="The goal period. Dates choose which goal is current; they do not measure progress.">
 
         <div>
           <span>Start</span>
@@ -503,6 +513,11 @@ function renderGoalForm() {
 
 
       </div>
+
+      <p class="form-hint goal-date-hint">
+        Start and end dates label the goal period and decide which goal is
+        current. They don't measure progress.
+      </p>
 
       <div
         class="nutrition-panel"
@@ -905,12 +920,18 @@ function renderNutritionPanel() {
     <p class="nutrition-basis">
       ${escapeHtml(
         `BMR ${result.bmr} kcal · TDEE ${result.tdee} kcal · ` +
-        `${meta.goalType.replace("-", " ")} ${sign}${meta.adjustmentPercent}%`
+        (meta.goalType === "recomposition"
+          ? "recomposition (maintenance-calorie starting point)"
+          : `${meta.goalType.replace("-", " ")} ${sign}${meta.adjustmentPercent}%`)
       )}
       <br>
       ${escapeHtml(`Based on ${weightText}`)}
     </p>
 
+    <p class="nutrition-note nutrition-disclaimer">
+      These are practical starting targets, not exact requirements.
+      Adjust them from how your weight, training and energy respond.
+    </p>
     <div class="nutrition-compare" role="table">
       <div class="nutrition-compare-row nutrition-compare-head" role="row">
         <span></span>

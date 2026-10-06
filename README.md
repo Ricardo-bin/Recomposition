@@ -46,6 +46,9 @@ Recomposition/
 ├── themeAssets.js centralized Batman / Linkin Park asset registry
 
 ├── exercisePicker.js pure plan-exercise <-> library link helpers
+├── workout.js execution-only Workout tab (today + START WORKOUT)
+├── workoutPlanEditor.js permanent plan editor, mounted by Settings → Edit Workouts
+├── alternativeToday.js pure session-level exercise replacement (Alternative Today)
 
 ├── exercisePickerUI.js the inline exercise picker (DOM)
 
@@ -274,6 +277,18 @@ In the workout plan editor, the exercise name box is a search-as-you-type picker
 \- If the library cannot load, the editor still works: custom names can always be typed.
 
 Validate the library after editing it: \`node scripts/validate-exercise-library.mjs\`
+
+**## Alternative Today**
+
+Replaces ONE exercise for **today's session only**. **PLAN ≠ SESSION ≠ LOG**: the saved plan is never written.
+
+\- **Session:** the session exercise gets `alternativeToday { name, libraryExerciseId, original { name, libraryExerciseId? }, selectedAt }`; its `name` / `libraryExerciseId` become the replacement and `exerciseId` stays the plan slot id. It lives in the existing active-session `localStorage` entry, so reload / resume restore it. Restore (or Close) removes it.
+
+\- **Picker:** the same library picker in a top-anchored sheet, library-only (`allowCustom: false`, no custom row). Duplicates of another exercise in the session, the planned exercise itself and deprecated exercises are rejected; the library record is re-read on confirm and a failure changes nothing.
+
+\- **Sets:** typed values never carry over to a different exercise (the user is warned first); the set count and prescription stay.
+
+\- **Log:** a replaced exercise is saved under `exerciseId = alt:<slotId>:<libraryExerciseId>` with `name` = what was performed, plus `plannedExerciseId`, `plannedName`, `plannedLibraryExerciseId`, `alternativeToday`. This keeps Bench Press history, previous performance, strength progression and PRs free of the replacement. Without an alternative the log is saved exactly as before.
 
 **## Tests**
 

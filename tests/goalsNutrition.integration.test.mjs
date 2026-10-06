@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import * as units from "../units.js";
 import * as engine from "../nutritionEngine.js";
 import * as currentWeight from "../currentWeight.js";
+import * as activeGoal from "../activeGoal.js";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 
 const JSDOM = await loadJSDOM();
@@ -77,7 +78,8 @@ async function bootGoals({ goals = [], profile = PROFILE, weights = WEIGHTS, pro
     getWeightHistory: async () => live.weights,
     ...Object.fromEntries(Object.keys(engine).map(k => [k, engine[k]])),
     ...Object.fromEntries(Object.keys(units).map(k => [k, units[k]])),
-    ...Object.fromEntries(Object.keys(currentWeight).map(k => [k, currentWeight[k]]))
+    ...Object.fromEntries(Object.keys(currentWeight).map(k => [k, currentWeight[k]])),
+    ...activeGoal
   };
 
   const { source } = loadSource("goals.js", stubs);
@@ -643,4 +645,146 @@ test("single source of truth: only goals.js uses the engine; the Dashboard never
   for (const file of ["progress.js", "history.js", "logWorkout.js", "workout.js", "auth.js", "settings.js", "profile.js"]) {
     assert.ok(!/nutritionEngine/.test(read(file)), `${file} must not calculate nutrition`);
   }
+});
+
+
+// ============================================================================
+// GOALS REFINEMENT: honest wording, current target, no fake progress
+// ============================================================================
+
+const dayOffset = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString("en-CA"); };
+
+test("engine constants are exactly the intended starting calculations", () => {
+  assert.deepEqual({ ...engine.ACTIVITY_MULTIPLIERS }, {
+    "sedentary": 1.2, "lightly-active": 1.375, "moderately-active": 1.55, "very-active": 1.725, "extremely-active": 1.9
+  });
+
+  const adjustments = Object.fromEntries(Object.entries(engine.GOAL_RULES).map(([k, v]) => [k, [v.adjustment, v.proteinPerKg]]));
+
+  assert.deepEqual(adjustments, {
+    "maintenance": [0, 1.8], "recomposition": [0, 1.8], "lean-bulk": [0.05, 1.8],
+    "bulk": [0.10, 1.8], "cut": [-0.15, 2.0], "fat-loss": [-0.20, 2.0]
+  });
+
+  assert.equal(engine.FAT_PER_KG, 0.8);
+  assert.ok(!("custom" in engine.GOAL_RULES), "custom is manual: never calculated");
+});
+
+test("Recomposition is presented as a maintenance-calorie starting point, same numbers as Maintenance", { skip }, async () => {
+  const t = await bootGoals();
+
+  await t.openNew();
+  await t.chooseType("Recomposition");
+
+  const panel = t.panelText();
+
+  assert.match(panel, /recomposition \(maintenance-calorie starting point\)/);
+  assert.doesNotMatch(panel, /recomposition requires|recomposition \+0%/i);
+  assert.match(panel, /Calories — 2710 kcal/);
+  assert.match(panel, /Protein — 145 g/);
+  assert.match(panel, /Carbs — 385 g/);
+  assert.match(panel, /Fat — 65 g/);
+});
+
+test("every recommendation says these are practical starting targets, not exact requirements", { skip }, async () => {
+  const t = await bootGoals();
+
+  await t.openNew();
+
+  for (const type of ["Maintenance", "Recomposition", "Lean Bulk", "Bulk", "Cut", "Fat Loss"]) {
+    await t.chooseType(type);
+
+    assert.match(t.panelText(), /practical starting targets, not exact requirements/i, type);
+    assert.doesNotMatch(t.panelText(), /you need|requires exactly|exactly the calories|optimal|guaranteed/i, type);
+  }
+});
+
+test("Custom goals are not calculated and carry no recommendation numbers", { skip }, async () => {
+  const t = await bootGoals();
+
+  await t.openNew();
+  await t.chooseType("Custom");
+
+  assert.doesNotMatch(t.panelText().replace(/BMR|TDEE/g, ""), /kcal/);
+});
+
+test("the goal form explains that dates only label the period", { skip }, async () => {
+  const t = await bootGoals();
+
+  await t.openNew();
+
+  const hint = t.document.querySelector(".goal-date-hint");
+
+  assert.ok(hint);
+  assert.match(hint.textContent, /label the goal period/);
+  assert.match(hint.textContent, /don't measure progress/);
+});
+
+test("the goal whose period contains today is marked CURRENT TARGET (and only it)", { skip }, async () => {
+  const t = await bootGoals({
+    goals: [
+      goalDoc({ id: "past", goalType: "Cut", startDate: dayOffset(-120), endDate: dayOffset(-60) }),
+      goalDoc({ id: "now", goalType: "Maintenance", startDate: dayOffset(-30), endDate: "" }),
+      goalDoc({ id: "future", goalType: "Bulk", startDate: dayOffset(30), endDate: "" })
+    ]
+  });
+
+  const badges = [...t.document.querySelectorAll("[data-current-goal]")];
+
+  assert.equal(badges.length, 1);
+  assert.equal(badges[0].closest(".goal-card").dataset.goalId, "now");
+  assert.match(badges[0].textContent, /CURRENT TARGET/);
+});
+
+test("no goal is current when none applies today; saved data is untouched", { skip }, async () => {
+  const goals = [goalDoc({ id: "past", startDate: dayOffset(-120), endDate: dayOffset(-60) })];
+  const before = JSON.stringify(goals);
+
+  const t = await bootGoals({ goals });
+
+  assert.equal(t.document.querySelectorAll("[data-current-goal]").length, 0);
+  assert.equal(JSON.stringify(goals), before);
+  assert.equal(t.calls.saveGoal.length, 0, "viewing goals never writes");
+});
+
+test("overlapping goals: the one that started most recently is current", { skip }, async () => {
+  const t = await bootGoals({
+    goals: [
+      goalDoc({ id: "old", goalType: "Cut", startDate: dayOffset(-90), endDate: "" }),
+      goalDoc({ id: "newer", goalType: "Lean Bulk", startDate: dayOffset(-10), endDate: "" })
+    ]
+  });
+
+  assert.equal(t.document.querySelector("[data-current-goal]").closest(".goal-card").dataset.goalId, "newer");
+});
+
+test("Goals uses the SAME current-goal rule as the Dashboard", () => {
+  const dashboard = read("dashboard.js");
+  const match = dashboard.match(/function findActiveGoal\(goals\) \{[\s\S]*?\n\}/);
+
+  assert.ok(match, "dashboard findActiveGoal still exists");
+
+  const dashboardRule = new Function("dateKey", `${match[0]}; return findActiveGoal;`)(() => "2026-10-06");
+
+  const goals = [
+    { id: "a", startDate: "2026-01-01", endDate: "2026-12-31" },
+    { id: "b", startDate: "2026-09-01", endDate: "" },
+    { id: "c", startDate: "", endDate: "" },
+    { id: "d", startDate: "2026-11-01", endDate: "" },
+    { id: "e", startDate: "2025-01-01", endDate: "2025-12-31" }
+  ];
+
+  for (const subset of [goals, goals.slice(0, 1), goals.slice(2), goals.slice(3), goals.slice(4), []]) {
+    assert.equal(
+      activeGoal.findActiveGoal(subset, "2026-10-06")?.id ?? null,
+      dashboardRule(subset)?.id ?? null
+    );
+  }
+});
+
+test("Goals shows no completion percentage or progress bar", { skip }, async () => {
+  const t = await bootGoals({ goals: [goalDoc({ id: "now", startDate: dayOffset(-30), endDate: dayOffset(30) })] });
+
+  assert.equal(t.document.querySelectorAll("progress, meter, [role='progressbar'], [class*='progress-bar'], [class*='progress-fill']").length, 0);
+  assert.doesNotMatch(t.cardsText(), /%|complete|completion|days left|progress/i);
 });

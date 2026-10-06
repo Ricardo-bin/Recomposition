@@ -6611,16 +6611,36 @@ body::before {
     transparent 90%
   );
 }
+/* LINKIN PARK background artwork is PORTRAIT (about 852 x 1846): it fills the
+   viewport on phones (controlled cover, anchored to the top, never stretched)
+   and fades out well before the content. It is a faint atmosphere layer only:
+   low opacity, multiply, behind everything, no pointer events. (It used to be a
+   320px band sized for a wide 728 x 399 image.) */
 [data-theme="linkin-park"] body::before {
-  bottom: auto;
-  height: 320px;
   background-image: var(--theme-asset-background, none);
-  background-size: 100% auto;
-  opacity: 0.2;
+  background-size: cover;
+  background-position: 50% 0;
+  opacity: 0.16;
   mix-blend-mode: multiply;
-  background-position: 100% 0;
-  -webkit-mask-image: linear-gradient(#000 10%, transparent 100%);
-  mask-image: linear-gradient(#000 10%, transparent 100%);
+  -webkit-mask-image: linear-gradient(
+    #000 0%,
+    rgba(0, 0, 0, 0.55) 40%,
+    transparent 85%
+  );
+  mask-image: linear-gradient(
+    #000 0%,
+    rgba(0, 0, 0, 0.55) 40%,
+    transparent 85%
+  );
+}
+/* wide screens: a portrait image must not be blown up to the full width, so it
+   becomes a side panel instead. */
+@media (min-width: 768px) {
+  [data-theme="linkin-park"] body::before {
+    left: auto;
+    width: min(520px, 42vw);
+    background-position: 50% 0;
+  }
 }
 
 /* logo in the brand position (never distorted) */
@@ -6833,4 +6853,372 @@ body::before {
   [data-theme-art~="dashboard"] #dashboard-content > .page-header::before {
     width: 40%;
   }
+}
+
+/* ==========================================================================
+   Alternative Today (Exercise Library Step 4)
+   A temporary, session-only replacement. Uses existing tokens only, so Batman
+   Dark and Linkin Park Light both follow their own palettes.
+   ========================================================================== */
+
+.alt-today-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: var(--space-3, 12px);
+}
+
+.alt-today-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(var(--accent-rgb), 0.07);
+  border: 1px solid var(--border-accent, rgba(var(--accent-rgb), 0.4));
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.alt-today-tag {
+  color: var(--accent);
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+.alt-today-planned {
+  color: var(--text-secondary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.alt-today-planned strong {
+  color: var(--text-primary);
+}
+
+.alt-today-note {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.alt-today-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.alt-today-banner-actions .workout-small-button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* ---- Sheet ------------------------------------------------------------------
+   Anchored to the TOP of the screen (not the bottom) so the on-screen keyboard
+   can never cover the search box or its results. Scrolls inside itself. */
+
+.alt-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding:
+    max(12px, env(safe-area-inset-top))
+    12px
+    max(12px, env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.62);
+  overflow: hidden;
+}
+
+.alt-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--text-primary);
+  background: var(--bg-panel, #101217);
+  border: 1px solid var(--border-accent, rgba(var(--accent-rgb), 0.4));
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
+}
+
+.alt-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alt-sheet-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
+  font-size: 18px;
+  font-weight: normal;
+  letter-spacing: 0.8px;
+}
+
+.alt-sheet-lead,
+.alt-sheet-current,
+.alt-sheet-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.alt-sheet-current strong {
+  color: var(--text-primary);
+}
+
+.alt-sheet-hint {
+  color: var(--text-muted);
+}
+
+.alt-sheet-summary,
+.alt-sheet-error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.alt-sheet-summary {
+  color: var(--text-primary);
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+}
+
+.alt-sheet-error {
+  color: var(--warning);
+  background: rgba(var(--warning-rgb), 0.08);
+  border: 1px solid rgba(var(--warning-rgb), 0.3);
+}
+
+.alt-sheet-summary[hidden],
+.alt-sheet-error[hidden],
+.alt-sheet-hint[hidden] {
+  display: none;
+}
+
+/* "Custom exercise" is meaningless here: only library picks are possible. */
+.alt-sheet .exercise-link-status--custom {
+  display: none;
+}
+
+.alt-sheet-actions .workout-primary-button {
+  width: 100%;
+  min-height: 44px;
+}
+
+.alt-sheet-actions .workout-primary-button:disabled {
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   Workout = execution only (today card) + Alternative Today refinements
+   ========================================================================== */
+
+.workout-today {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+#section-workout.workout-session-active .workout-today {
+  display: none;
+}
+
+.workout-today-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 16px;
+  background: var(--bg-panel, #101217);
+  border: 1px solid var(--border-accent, rgba(var(--accent-rgb), 0.4));
+  border-left: 3px solid var(--accent);
+  border-radius: 12px;
+}
+
+.workout-today-kicker {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+.workout-today-name {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
+  font-size: 24px;
+  letter-spacing: 0.8px;
+  overflow-wrap: anywhere;
+}
+
+.workout-today-meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.workout-start-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 8px;
+}
+
+.alt-sheet-current {
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
+  font-size: 20px;
+  letter-spacing: 0.6px;
+}
+
+.alt-sheet-lead--strong {
+  color: var(--text-primary);
+}
+
+.alt-sheet-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.alt-sheet-summary[hidden] {
+  display: none;
+}
+
+.alt-summary-label {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+.alt-summary-from {
+  color: var(--text-secondary);
+}
+
+.alt-summary-arrow {
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.alt-summary-to {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.alt-summary-note {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.alt-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alt-sheet-cancel {
+  width: 100%;
+  min-height: 44px;
+}
+
+/* ==========================================================================
+   Goals + Progress refinement: objective comparisons (no progress bars)
+   ========================================================================== */
+
+.goal-current-badge {
+  color: var(--accent);
+  letter-spacing: 1.5px;
+}
+
+.goal-date-hint,
+.form-hint {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.nutrition-disclaimer {
+  color: var(--text-muted);
+}
+
+.progress-compare {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-accent, rgba(var(--accent-rgb), 0.3));
+  border-radius: 8px;
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+.progress-compare-title {
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+.progress-compare-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  min-width: 0;
+  padding: 4px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.progress-compare-row strong {
+  color: var(--text-primary);
+}
+
+.progress-compare-site {
+  flex: 0 0 84px;
+  color: var(--text-primary);
+}
+
+.progress-compare-arrow {
+  color: var(--accent);
+}
+
+.progress-compare-change {
+  margin-left: auto;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-compare-note {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
 }

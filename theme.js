@@ -26,7 +26,8 @@ import {
   ASSET_KEYS,
   normalizeThemeId,
   getThemeAssets,
-  onlyProvidedAssets
+  onlyProvidedAssets,
+  withAssetVersion
 } from "./themeAssets.js";
 
 export const THEME_STORAGE_KEY = "recomposition.theme.v1";
@@ -65,7 +66,13 @@ export function createThemeManager({
     }
   };
 
-  const assets = () => getThemeAssets(current, themes);
+  // URLs carry ?v=ASSET_VERSION (see themeAssets.js) so replaced artwork is re-fetched.
+  const assets = () =>
+    Object.fromEntries(
+      Object.entries(getThemeAssets(current, themes)).map(
+        ([key, url]) => [key, withAssetVersion(url)]
+      )
+    );
 
   // ---- one element --------------------------------------------------------------
   function markMissing(element) {

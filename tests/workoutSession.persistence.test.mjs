@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
+import * as alternativeToday from "../alternativeToday.js";
 
 const JSDOM = await loadJSDOM();
 const skip = JSDOM ? false : SKIP_MESSAGE;
@@ -65,6 +66,7 @@ function boot(world, uid = "userA") {
   const auth = { currentUser: uid ? { uid } : null };
 
   const stubs = {
+    ...alternativeToday,
     getWorkoutPlan: async id => PLANS[id] ?? null,
     getPreviousWorkoutLog: async () => null,
     getWorkoutLogs: async () => world.logs.slice(),

@@ -38,6 +38,18 @@ export const ASSET_FILES = Object.freeze({
 
 export const ASSET_KEYS = Object.freeze(Object.keys(ASSET_FILES));
 
+// Cache-busting for LOCAL artwork. The files keep their names (the seven-slot
+// architecture is unchanged), but the browser is asked for `<file>?v=<ASSET_VERSION>`
+// so a replaced image is fetched again instead of being served from a stale
+// cache (Safari/iOS and plain static servers cache aggressively).
+// WHEN YOU REPLACE ANY FILE IN assets/themes/, BUMP THIS VALUE.
+export const ASSET_VERSION = "2";
+
+export const withAssetVersion = (url, version = ASSET_VERSION) =>
+  typeof url === "string" && url
+    ? `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`
+    : null;
+
 const BASE = "assets/themes";
 
 const forTheme = themeId =>
