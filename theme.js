@@ -25,7 +25,8 @@ import {
   THEME_ASSETS,
   ASSET_KEYS,
   normalizeThemeId,
-  getThemeAssets
+  getThemeAssets,
+  onlyProvidedAssets
 } from "./themeAssets.js";
 
 export const THEME_STORAGE_KEY = "recomposition.theme.v1";
@@ -238,7 +239,7 @@ export function createThemeManager({
 }
 
 // ---- the app's single instance --------------------------------------------------
-export const theme = createThemeManager();
+export const theme = createThemeManager({ themes: onlyProvidedAssets() });
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   window.RecompositionTheme = theme;

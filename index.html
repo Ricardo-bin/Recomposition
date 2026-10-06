@@ -11,6 +11,18 @@
 
   <title>Recomposition</title>
 
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("recomposition.theme.v1");
+        t = t === "linkin-park" ? "linkin-park" : "batman";
+        document.documentElement.setAttribute("data-theme", t);
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute("content", t === "linkin-park" ? "#ebe8e1" : "#050608");
+      } catch (e) {}
+    })();
+  </script>
+
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -23,6 +35,7 @@
 
     <div class="splash-logo">
       R
+      <img class="theme-logo" data-theme-asset="logo" alt="" hidden>
     </div>
 
     <div class="splash-name">
@@ -242,6 +255,7 @@
 
         <div class="topbar-mark">
           R
+          <img class="theme-logo" data-theme-asset="logo" alt="" hidden>
         </div>
 
         <div class="topbar-brand-text">

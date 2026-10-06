@@ -37,6 +37,52 @@ import {
   loadGoals
 } from "./goals.js";
 
+// Theme is reached through the global the theme foundation already exposes
+// (no module coupling to the theme foundation files).
+const THEME_LABELS = { "batman": "Batman Dark", "linkin-park": "Linkin Park Light" };
+const getTheme = () => window.RecompositionTheme;
+
+const THEME_META_COLOR = { "batman": "#050608", "linkin-park": "#ebe8e1" };
+
+function syncThemeChrome(id) {
+  document.querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", THEME_META_COLOR[id] ?? "#050608");
+}
+
+function themeOptionMarkup(id, sub) {
+  return `
+    <button type="button" class="theme-option" role="radio"
+      data-theme-id="${id}" aria-checked="false">
+      <span class="theme-preview" data-p="${id}" aria-hidden="true">
+        <i class="bar"></i><i class="blk"></i><i class="pb"></i><i class="dot"></i>
+      </span>
+      <span class="theme-option-name">${THEME_LABELS[id]}</span>
+      <span class="theme-option-sub">${sub}</span>
+    </button>`;
+}
+
+function initializeThemeSwitch() {
+  const switcher = document.getElementById("theme-switch");
+  if (!switcher) return;
+
+  const paint = () => {
+    switcher.querySelectorAll(".theme-option").forEach(option => {
+      option.setAttribute("aria-checked", String(option.dataset.themeId === getTheme()?.get()));
+    });
+  };
+
+  switcher.addEventListener("click", event => {
+    const option = event.target.closest(".theme-option");
+    if (!option) return;
+    if (getTheme()?.set(option.dataset.themeId)) {
+      syncThemeChrome(getTheme().get());
+      paint();
+    }
+  });
+
+  paint();
+}
+
 function renderSettings() {
 
   const container =
@@ -63,6 +109,20 @@ container.innerHTML = `
           Manage your profile, body data and account.
         </p>
       </div>
+    </div>
+
+
+    <div class="settings-group">
+
+      <div class="settings-group-title">
+        APPEARANCE
+      </div>
+
+      <div class="theme-switch" id="theme-switch" role="radiogroup" aria-label="Theme">
+        ${themeOptionMarkup("batman", "Tactical • Command center")}
+        ${themeOptionMarkup("linkin-park", "Industrial • Alt rock")}
+      </div>
+
     </div>
 
 
@@ -266,6 +326,7 @@ container.innerHTML = `
 `;
 
 initializeSettingsNavigation();
+initializeThemeSwitch();
 
   const exportButton =
     document.getElementById(

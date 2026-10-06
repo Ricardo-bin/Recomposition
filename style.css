@@ -207,7 +207,7 @@ textarea:focus {
 
   padding: 32px 26px;
 
-  background: rgba(17, 17, 23, 0.96);
+  background: var(--bg-auth-card, rgba(17, 17, 23, 0.96));
 
   border: 1px solid var(--border-accent);
   border-radius: var(--radius-lg);
@@ -777,7 +777,7 @@ textarea:focus {
 }
 
 .btn-danger {
-  color: #fff;
+  color: var(--danger-text);
 
   background: rgba(var(--danger-rgb), 0.10);
 
@@ -1104,7 +1104,7 @@ textarea:focus {
     max(8px, env(safe-area-inset-bottom))
     max(10px, env(safe-area-inset-left));
 
-  background: rgba(12, 13, 17, 0.94);
+  background: var(--bg-nav, rgba(12, 13, 17, 0.94));
 
   border:
     1px solid var(--border-subtle);
@@ -2475,7 +2475,7 @@ textarea:focus {
 
   padding: 11px 12px;
 
-  background: rgba(12, 12, 16, 0.9);
+  background: var(--bg-input);
   border: 1px solid rgba(var(--sheen-rgb), 0.09);
   border-radius: 9px;
 
@@ -5282,3 +5282,288 @@ textarea {
   align-self: flex-start;
   margin-top: var(--space-1);
 }
+
+
+/* ==========================================================================
+   30. THEME DESIGN LANGUAGES — one token system, two identities
+   Batman Dark = tactical command center (chamfers, brackets, gold hairlines)
+   Linkin Park Light = industrial editorial (hard edges, ink borders, offset
+   shadows, condensed type, red stamps, grain). Asset slots: --theme-asset-*.
+   ========================================================================== */
+
+:root, :root[data-theme="batman"] {
+  --bg-main:#050608; --bg-panel:#0e1014; --bg-panel-2:#14171c; --bg-panel-3:#1a1e25;
+  --bg-input:#08090c; --bg-field:#08090c; --bg-raised:#161a20; --bg-chip:#12151a;
+  --bg-nav:rgba(8,9,12,.96); --bg-auth-card:rgba(10,12,15,.97); --bg-auth:#050608;
+  --border-subtle:rgba(190,200,215,.09); --border-medium:rgba(190,200,215,.17);
+  --border-field:rgba(190,200,215,.2); --border-accent:rgba(216,169,40,.4);
+  --text-primary:#eceef2; --text-strong:#fff; --text-secondary:#9ba2b0; --text-muted:#667080;
+  --accent:#d8a928; --accent-bright:#f0c94a; --accent-dark:#8f6f12; --accent-rgb:216,169,40;
+  --on-accent:#0a0803; --chrome-rgb:6,7,9;
+  --font-display:"Batman Forever","Chakra Petch",sans-serif; --font-body:"Chakra Petch",sans-serif;
+  --display-transform:uppercase; --head-font:"Chakra Petch",sans-serif; --head-weight:600; --head-track:1.5px;
+  --r-card:2px; --r-ctl:2px; --radius-card:2px; --radius-control:2px; --radius-sm:2px; --radius-md:3px; --radius-lg:3px;
+  --card-border:1px solid var(--border-subtle);
+  --card-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 14px 34px rgba(0,0,0,.5);
+  --card-bg:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,0) 45%),var(--bg-panel);
+  --card-deco:linear-gradient(var(--accent),var(--accent)) top left/14px 1px no-repeat,linear-gradient(var(--accent),var(--accent)) top left/1px 14px no-repeat,linear-gradient(var(--accent),var(--accent)) bottom right/14px 1px no-repeat,linear-gradient(var(--accent),var(--accent)) bottom right/1px 14px no-repeat;
+  --shadow-panel:var(--card-shadow); --focus-ring:0 0 0 2px rgba(216,169,40,.25);
+  --btn-shadow:0 0 0 rgba(0,0,0,0); --btn-clip:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+  --metric-font:"Chakra Petch",sans-serif; --metric-color:var(--text-strong);
+  --grain-opacity:.05; --grain-blend:screen;
+}
+
+:root[data-theme="linkin-park"] {
+  --bg-main:#ebe8e1; --bg-panel:#f8f6f1; --bg-panel-2:#e3dfd6; --bg-panel-3:#d8d3c8;
+  --bg-input:#fffdf8; --bg-field:#fffdf8; --bg-raised:#efebe3; --bg-chip:#e3dfd6;
+  --bg-nav:#f8f6f1; --bg-auth-card:#f8f6f1; --bg-auth:#ddd9cf;
+  --border-subtle:rgba(20,20,24,.2); --border-medium:rgba(20,20,24,.45);
+  --border-field:#17171b; --border-accent:#b3201f; --placeholder:#8b887f;
+  --text-primary:#15151a; --text-strong:#000; --text-secondary:#46464d; --text-muted:#74726c;
+  --accent:#b3201f; --accent-bright:#d32a26; --accent-dark:#7a1214; --accent-rgb:179,32,31;
+  --on-accent:#fff; --chrome-rgb:248,246,241; --sheen-rgb:0,0,0; --icon-muted:#74726c;
+  --success:#1f7a45; --success-text:#1f6b3d; --danger:#b3201f; --danger-text:#9a1b1a; --danger-rgb:179,32,31;
+  --info:#1d5fa8; --warning:#b86e00; --disabled-bg:#dcd8cf; --disabled-text:#8b887f;
+  --font-display:"Haettenschweiler","Impact","Arial Narrow Bold","Roboto Condensed","sans-serif-condensed",sans-serif;
+  --font-body:system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --display-transform:uppercase; --head-font:var(--font-display); --head-weight:700; --head-track:.5px;
+  --r-card:0px; --r-ctl:0px; --radius-card:0; --radius-control:0; --radius-sm:0; --radius-md:0; --radius-lg:0;
+  --card-border:2px solid #17171b; --card-shadow:4px 4px 0 #17171b;
+  --card-bg:var(--bg-panel); --card-deco:none;
+  --shadow-panel:var(--card-shadow); --shadow-accent:none; --focus-ring:3px 3px 0 #b3201f;
+  --btn-shadow:3px 3px 0 #17171b; --btn-clip:none;
+  --metric-font:var(--font-display); --metric-color:#15151a;
+  --grain-opacity:.22; --grain-blend:multiply;
+}
+
+/* ---- shared token-driven surface (same selectors, both themes) ---------- */
+html{font-family:var(--font-body)}
+html,body,button,input,select,textarea{font-family:var(--font-body)}
+body{background:var(--bg-main)}
+:root[data-theme="batman"] body{background:radial-gradient(ellipse 80% 38% at 50% -6%,rgba(216,169,40,.10),transparent 70%),linear-gradient(rgba(190,200,215,.025) 1px,transparent 1px) 0 0/100% 34px,linear-gradient(90deg,rgba(190,200,215,.025) 1px,transparent 1px) 0 0/34px 100%,var(--bg-main)}
+:root[data-theme="linkin-park"] body{background:radial-gradient(circle,rgba(20,20,24,.07) 1px,transparent 1.4px) 0 0/7px 7px,linear-gradient(180deg,#f3f0ea,#e6e2d9)}
+.app-shell{position:relative;z-index:1;background:none}
+body::before,body::after{content:"";position:fixed;inset:0;pointer-events:none}
+body::before{z-index:0;background:var(--theme-asset-background,none) center top/cover no-repeat;opacity:.16}
+body::after{z-index:9000;opacity:var(--grain-opacity);mix-blend-mode:var(--grain-blend);background:var(--theme-asset-texture,none),url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+
+.card,.panel,.stat-card,.progress-stat-card,.dash-today-card,.workout-day-card,.workout-plan-card,.history-workout-card,.goal-card,.settings-card,.exercise-card,.exercise-builder-card,.nutrition-panel,.progress-panel,.settings-account-panel,.strength-progress-detail-card,.history-edit-exercise,.workout-session-exercise,.weight-history-item,.personal-record-row,.dash-athlete{
+  background:var(--card-deco),var(--card-bg);border:var(--card-border);border-radius:var(--r-card);box-shadow:var(--card-shadow)}
+.weight-history-item,.personal-record-row,.history-edit-exercise,.strength-progress-detail-card{box-shadow:none}
+.form-input,.form-select,.form-textarea,.history-filter-select,.history-search-input,.workout-set-input,.input,.select,.textarea,input,select,textarea{border-radius:var(--r-ctl)}
+.btn,.btn-primary,.btn-secondary,.btn-danger,.primary-btn,.secondary-btn,.auth-primary,.auth-secondary,.auth-google,.workout-primary-button,.workout-log-button,.workout-small-button,.settings-action-button,.dash-full-button,.history-load-more-button{
+  border-radius:var(--r-ctl);clip-path:var(--btn-clip);font-family:var(--head-font);letter-spacing:var(--head-track);text-transform:uppercase}
+.nav-btn,.nav-label,.section-eyebrow,.section-kicker,.section-label,.settings-group-title,.form-label,.dash-card-label,.stat-label,.progress-stat-label{font-family:var(--head-font);letter-spacing:var(--head-track)}
+.page-title,.section-title,.section-header h2,.panel-title,.card-title,.auth-form h1,.empty-state h3,.empty-state-title,.dash-today-name,.workout-day-name,.workout-plan-name,.history-workout-title,.settings-card-title,.exercise-name{font-family:var(--font-display);text-transform:var(--display-transform)}
+.stat-value,.progress-stat-value,.dash-stat,.current-weight-value,.weekly-volume-value,.history-set-number,.personal-record-1rm-value,.strength-progress-detail-value{font-family:var(--metric-font);color:var(--metric-color);font-variant-numeric:tabular-nums}
+.empty-state,.history-empty-state,.workout-empty-state,.progress-empty,.exercise-empty-state,.history-empty{background:var(--bg-panel);border-radius:var(--r-card)}
+
+/* ======================= 🦇 BATMAN — tactical command center ============== */
+[data-theme="batman"] .topbar{background:linear-gradient(180deg,rgba(14,16,20,.97),rgba(6,7,9,.94));border-bottom:1px solid var(--border-subtle);box-shadow:0 1px 0 rgba(216,169,40,.12),0 10px 30px rgba(0,0,0,.6)}
+[data-theme="batman"] .topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,var(--accent) 30%,transparent 70%);opacity:.55;pointer-events:none}
+[data-theme="batman"] .topbar-mark{clip-path:polygon(50% 0,100% 22%,100% 78%,50% 100%,0 78%,0 22%);border-radius:0;box-shadow:0 0 18px rgba(216,169,40,.35)}
+[data-theme="batman"] .topbar-title{color:var(--accent);letter-spacing:3px}
+[data-theme="batman"] .topbar-date{padding:4px 9px;border:1px solid var(--border-medium);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+[data-theme="batman"] .bottom-nav{border-radius:0;border:0;border-top:1px solid var(--border-medium);background:linear-gradient(180deg,rgba(18,20,25,.97),rgba(5,6,8,.99));box-shadow:0 -18px 40px rgba(0,0,0,.65)}
+[data-theme="batman"] .nav-btn{border-radius:0;position:relative}
+[data-theme="batman"] .nav-btn.active{background:linear-gradient(180deg,rgba(216,169,40,.16),transparent 80%);color:var(--accent)}
+[data-theme="batman"] .nav-btn.active::before{content:"";position:absolute;top:-9px;left:22%;right:22%;height:2px;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+[data-theme="batman"] .section-header,[data-theme="batman"] .page-header,[data-theme="batman"] .section-heading{position:relative;padding-bottom:14px;border-bottom:1px solid var(--border-subtle);background:var(--theme-asset-decorative,none) right center/auto 100% no-repeat}
+[data-theme="batman"] .section-header::after,[data-theme="batman"] .page-header::after{content:"";position:absolute;left:0;bottom:-1px;width:56px;height:2px;background:var(--accent);box-shadow:0 0 10px rgba(216,169,40,.6)}
+[data-theme="batman"] .section-eyebrow,[data-theme="batman"] .section-kicker,[data-theme="batman"] .section-label,[data-theme="batman"] .settings-group-title{color:var(--accent);font-size:10px;font-weight:600;letter-spacing:3px}
+[data-theme="batman"] .section-eyebrow::before,[data-theme="batman"] .settings-group-title::before{content:"//";margin-right:8px;opacity:.6}
+[data-theme="batman"] .section-header h2,[data-theme="batman"] .page-title{letter-spacing:2px}
+[data-theme="batman"] .btn-primary,[data-theme="batman"] .primary-btn,[data-theme="batman"] .auth-primary,[data-theme="batman"] .workout-primary-button,[data-theme="batman"] .workout-log-button,[data-theme="batman"] .dash-full-button{background:linear-gradient(180deg,var(--accent-bright),var(--accent) 55%,var(--accent-dark));border:0;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+[data-theme="batman"] .btn-secondary,[data-theme="batman"] .secondary-btn,[data-theme="batman"] .auth-secondary,[data-theme="batman"] .auth-google{background:rgba(255,255,255,.02);border:1px solid var(--border-medium)}
+[data-theme="batman"] .form-input:focus,[data-theme="batman"] .form-select:focus,[data-theme="batman"] .form-textarea:focus,[data-theme="batman"] input:focus,[data-theme="batman"] select:focus,[data-theme="batman"] textarea:focus{border-color:var(--accent);box-shadow:0 1px 0 var(--accent),0 0 16px rgba(216,169,40,.15)}
+[data-theme="batman"] .form-input,[data-theme="batman"] .form-select,[data-theme="batman"] .form-textarea,[data-theme="batman"] input,[data-theme="batman"] select,[data-theme="batman"] textarea{box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
+[data-theme="batman"] .form-label{color:var(--text-muted);font-size:9px;letter-spacing:2.5px}
+[data-theme="batman"] .stat-value,[data-theme="batman"] .progress-stat-value,[data-theme="batman"] .dash-stat{font-weight:600;letter-spacing:1px;text-shadow:0 0 18px rgba(216,169,40,.18)}
+[data-theme="batman"] .stat-label,[data-theme="batman"] .progress-stat-label{font-size:9px;letter-spacing:2.5px;color:var(--text-muted);text-transform:uppercase}
+[data-theme="batman"] .today-badge,[data-theme="batman"] .nutrition-badge,[data-theme="batman"] .dash-done-badge{background:rgba(216,169,40,.1);color:var(--accent);border:1px solid var(--border-accent);border-radius:0;letter-spacing:2px;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
+[data-theme="batman"] .workout-day-card.today,[data-theme="batman"] .nutrition-active{border-color:var(--border-accent);box-shadow:var(--card-shadow),0 0 28px rgba(216,169,40,.1)}
+[data-theme="batman"] .weekly-volume-divider,[data-theme="batman"] .auth-divider{background:linear-gradient(90deg,transparent,var(--border-medium),transparent);border:0;height:1px}
+[data-theme="batman"] .empty-state,[data-theme="batman"] .history-empty-state,[data-theme="batman"] .workout-empty-state,[data-theme="batman"] .progress-empty{border:1px dashed var(--border-medium);background:var(--card-deco),repeating-linear-gradient(135deg,rgba(255,255,255,.015) 0 6px,transparent 6px 12px),var(--bg-panel)}
+[data-theme="batman"] .dash-athlete{background:var(--theme-asset-profile,none) right center/auto 110% no-repeat,var(--card-deco),var(--card-bg)}
+[data-theme="batman"] .dash-today-card{background:var(--theme-asset-dashboard,none) right center/auto 100% no-repeat,var(--card-deco),var(--card-bg)}
+[data-theme="batman"] .auth-card{background:var(--theme-asset-hero,none) center top/100% auto no-repeat,var(--card-deco),var(--bg-auth-card)}
+[data-theme="batman"] .auth-logo,[data-theme="batman"] .splash-name{font-family:var(--font-display);color:var(--accent);letter-spacing:5px}
+[data-theme="batman"] .splash-logo{clip-path:polygon(50% 0,100% 22%,100% 78%,50% 100%,0 78%,0 22%);border-radius:0}
+
+/* ======================= 🔴 LINKIN PARK — industrial editorial ============ */
+[data-theme="linkin-park"] .topbar{background:var(--bg-nav);border-bottom:3px solid #17171b;backdrop-filter:none}
+[data-theme="linkin-park"] .topbar::after{content:"";position:absolute;left:0;bottom:-3px;width:84px;height:3px;background:var(--accent)}
+[data-theme="linkin-park"] .topbar-mark{background:#17171b;color:#fff;border-radius:0;font-family:var(--font-display);box-shadow:3px 3px 0 var(--accent);transform:skew(-6deg)}
+[data-theme="linkin-park"] .topbar-title{font-size:20px;letter-spacing:1.5px;color:#15151a}
+[data-theme="linkin-park"] .topbar-subtitle{color:var(--accent);font-weight:700}
+[data-theme="linkin-park"] .topbar-date{padding:2px 8px;color:#fff;background:#17171b;font-family:var(--font-display);font-size:13px;letter-spacing:1px;text-transform:uppercase;transform:skew(-8deg)}
+[data-theme="linkin-park"] .bottom-nav{border-radius:0;border:0;border-top:3px solid #17171b;box-shadow:none;backdrop-filter:none;padding-top:0}
+[data-theme="linkin-park"] .nav-btn{border-radius:0;color:#15151a;border-left:1px solid rgba(20,20,24,.15)}
+[data-theme="linkin-park"] .nav-btn:first-child{border-left:0}
+[data-theme="linkin-park"] .nav-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.2px;white-space:nowrap}
+[data-theme="linkin-park"] .page-title,[data-theme="linkin-park"] .panel-title,[data-theme="linkin-park"] .card-title,[data-theme="linkin-park"] .dash-today-name,[data-theme="linkin-park"] .workout-day-name,[data-theme="linkin-park"] .workout-plan-name,[data-theme="linkin-park"] .history-workout-title,[data-theme="linkin-park"] .settings-card-title,[data-theme="linkin-park"] .exercise-name,[data-theme="linkin-park"] .stat-label{font-weight:800}
+[data-theme="linkin-park"] .nav-btn.active{background:var(--accent);color:#fff;box-shadow:inset 0 3px 0 #17171b}
+[data-theme="linkin-park"] .section-header,[data-theme="linkin-park"] .page-header,[data-theme="linkin-park"] .section-heading{position:relative;padding-bottom:12px;border-bottom:4px solid #17171b;background:var(--theme-asset-decorative,none) right center/auto 100% no-repeat,radial-gradient(circle,rgba(20,20,24,.28) 1.2px,transparent 1.6px) right bottom/8px 8px,none;background-size:auto 100%,64px 40px;background-repeat:no-repeat,no-repeat}
+[data-theme="linkin-park"] .section-header::after,[data-theme="linkin-park"] .page-header::after{content:"";position:absolute;left:0;bottom:-4px;width:72px;height:4px;background:var(--accent)}
+[data-theme="linkin-park"] .section-header h2,[data-theme="linkin-park"] .page-title,[data-theme="linkin-park"] .section-title{font-size:clamp(34px,10vw,46px);line-height:.95;letter-spacing:.5px;font-weight:700;color:#15151a}
+[data-theme="linkin-park"] .section-eyebrow,[data-theme="linkin-park"] .section-kicker,[data-theme="linkin-park"] .section-label{display:inline-block;padding:2px 9px;margin-bottom:8px;color:#fff;background:var(--accent);font-size:13px;letter-spacing:1.5px;transform:skew(-8deg)}
+[data-theme="linkin-park"] .settings-group-title{color:#15151a;font-size:15px;letter-spacing:2px;padding-bottom:4px;border-bottom:2px solid #17171b}
+[data-theme="linkin-park"] .panel-title,[data-theme="linkin-park"] .card-title{font-size:19px;letter-spacing:.5px}
+[data-theme="linkin-park"] .btn,[data-theme="linkin-park"] .primary-btn,[data-theme="linkin-park"] .secondary-btn,[data-theme="linkin-park"] .auth-primary,[data-theme="linkin-park"] .auth-secondary,[data-theme="linkin-park"] .auth-google,[data-theme="linkin-park"] .workout-primary-button,[data-theme="linkin-park"] .workout-log-button,[data-theme="linkin-park"] .workout-small-button,[data-theme="linkin-park"] .settings-action-button,[data-theme="linkin-park"] .dash-full-button,[data-theme="linkin-park"] .history-load-more-button{font-size:15px;font-weight:700;border:2px solid #17171b;box-shadow:var(--btn-shadow);transition:transform .08s,box-shadow .08s}
+[data-theme="linkin-park"] .btn-primary,[data-theme="linkin-park"] .primary-btn,[data-theme="linkin-park"] .auth-primary,[data-theme="linkin-park"] .workout-primary-button,[data-theme="linkin-park"] .workout-log-button,[data-theme="linkin-park"] .dash-full-button{background:var(--accent);color:#fff}
+[data-theme="linkin-park"] .btn-secondary,[data-theme="linkin-park"] .secondary-btn,[data-theme="linkin-park"] .auth-secondary,[data-theme="linkin-park"] .auth-google,[data-theme="linkin-park"] .settings-action-button,[data-theme="linkin-park"] .workout-small-button{background:var(--bg-panel);color:#15151a}
+[data-theme="linkin-park"] .btn:hover,[data-theme="linkin-park"] .primary-btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:4px 4px 0 #17171b;background:var(--accent-bright);color:#fff}
+[data-theme="linkin-park"] .btn:active,[data-theme="linkin-park"] .primary-btn:active,[data-theme="linkin-park"] .secondary-btn:active,[data-theme="linkin-park"] button.auth-primary:active{transform:translate(3px,3px);box-shadow:0 0 0 #17171b}
+[data-theme="linkin-park"] .btn-danger{background:transparent;color:var(--accent);border-color:var(--accent);box-shadow:3px 3px 0 var(--accent)}
+[data-theme="linkin-park"] .form-input,[data-theme="linkin-park"] .form-select,[data-theme="linkin-park"] .form-textarea,[data-theme="linkin-park"] input,[data-theme="linkin-park"] select,[data-theme="linkin-park"] textarea{border:2px solid #17171b;background-color:var(--bg-input);color:#15151a}
+[data-theme="linkin-park"] .form-input:focus,[data-theme="linkin-park"] .form-select:focus,[data-theme="linkin-park"] .form-textarea:focus,[data-theme="linkin-park"] input:focus,[data-theme="linkin-park"] select:focus,[data-theme="linkin-park"] textarea:focus{border-color:var(--accent);box-shadow:3px 3px 0 var(--accent)}
+[data-theme="linkin-park"] .form-label{color:#15151a;font-size:13px;font-weight:700;letter-spacing:1.5px}
+[data-theme="linkin-park"] .stat-value,[data-theme="linkin-park"] .progress-stat-value,[data-theme="linkin-park"] .dash-stat,[data-theme="linkin-park"] .current-weight-value{font-size:2.1em;line-height:1;font-weight:700}
+[data-theme="linkin-park"] .stat-unit{color:var(--accent);font-weight:700}
+[data-theme="linkin-park"] .stat-label,[data-theme="linkin-park"] .progress-stat-label{color:#15151a;font-family:var(--font-display);font-size:13px;letter-spacing:1.5px;text-transform:uppercase}
+[data-theme="linkin-park"] .stat-card,[data-theme="linkin-park"] .progress-stat-card{border-top:6px solid var(--accent)}
+[data-theme="linkin-park"] .today-badge,[data-theme="linkin-park"] .nutrition-badge,[data-theme="linkin-park"] .dash-done-badge{background:var(--accent);color:#fff;border:0;border-radius:0;font-family:var(--font-display);font-size:13px;letter-spacing:1.5px;transform:rotate(-3deg);box-shadow:2px 2px 0 #17171b}
+[data-theme="linkin-park"] .workout-day-card.today,[data-theme="linkin-park"] .nutrition-active{border-color:var(--accent);box-shadow:4px 4px 0 var(--accent)}
+[data-theme="linkin-park"] .settings-card:hover,[data-theme="linkin-park"] .workout-day-card:hover,[data-theme="linkin-park"] .history-workout-card:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 #17171b;border-color:#17171b}
+[data-theme="linkin-park"] .settings-card-arrow{color:var(--accent);font-weight:700}
+[data-theme="linkin-park"] .weekly-volume-divider,[data-theme="linkin-park"] .auth-divider{border:0;border-top:2px dashed #17171b;background:none}
+[data-theme="linkin-park"] .empty-state,[data-theme="linkin-park"] .history-empty-state,[data-theme="linkin-park"] .workout-empty-state,[data-theme="linkin-park"] .progress-empty{border:3px dashed #17171b;box-shadow:none}
+[data-theme="linkin-park"] .empty-state-title,[data-theme="linkin-park"] .empty-state h3{font-size:26px;color:var(--accent);transform:rotate(-2deg)}
+[data-theme="linkin-park"] .dash-athlete{background:var(--theme-asset-profile,none) right center/auto 110% no-repeat,var(--card-bg)}
+[data-theme="linkin-park"] .dash-today-card{background:var(--theme-asset-dashboard,none) right center/auto 100% no-repeat,var(--card-bg)}
+[data-theme="linkin-park"] .auth-card{background:var(--theme-asset-hero,none) center top/100% auto no-repeat,var(--bg-auth-card)}
+[data-theme="linkin-park"] .auth-logo,[data-theme="linkin-park"] .splash-name{font-family:var(--font-display);font-size:34px;letter-spacing:2px;color:#15151a}
+[data-theme="linkin-park"] .splash-logo{border-radius:0;background:#17171b;color:#fff;box-shadow:5px 5px 0 var(--accent);transform:skew(-6deg)}
+[data-theme="linkin-park"] #toast{border:2px solid #17171b;box-shadow:4px 4px 0 var(--accent);border-radius:0}
+[data-theme="linkin-park"] select{background-image:linear-gradient(45deg,transparent 50%,#17171b 50%),linear-gradient(135deg,#17171b 50%,transparent 50%)}
+
+/* ---- logo asset slot (img[data-theme-asset="logo"]) ---------------------- */
+.theme-logo{width:100%;height:100%;object-fit:contain;display:block}
+.theme-logo[hidden]{display:none}
+.topbar-mark:has(.theme-logo[data-theme-asset-state="loaded"]),.splash-logo:has(.theme-logo[data-theme-asset-state="loaded"]){background:none;box-shadow:none;clip-path:none;font-size:0;transform:none}
+
+/* ---- Settings: appearance / theme switch --------------------------------- */
+.theme-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.theme-option{position:relative;display:flex;flex-direction:column;gap:10px;padding:10px;text-align:left;color:var(--text-primary);cursor:pointer;background:var(--bg-panel);border:2px solid var(--border-medium);border-radius:var(--r-card);min-width:0;font-family:var(--head-font)}
+.theme-option[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.theme-option[aria-checked="true"]::after{content:"ACTIVE";position:absolute;top:-1px;right:-1px;padding:2px 7px;font-size:9px;letter-spacing:1.5px;color:var(--on-accent);background:var(--accent)}
+.theme-option-name{font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.theme-option-sub{font-family:var(--font-body);font-size:10px;color:var(--text-muted);letter-spacing:.5px}
+.theme-preview{height:74px;position:relative;overflow:hidden;border:1px solid rgba(128,128,128,.4)}
+.theme-preview i{position:absolute;display:block}
+.theme-preview[data-p="batman"]{background:linear-gradient(rgba(190,200,215,.06) 1px,transparent 1px) 0 0/100% 10px,#07080a}
+.theme-preview[data-p="batman"] .bar{left:0;right:0;top:0;height:12px;background:#12151a;border-bottom:1px solid #d8a928}
+.theme-preview[data-p="batman"] .blk{left:8px;top:22px;width:58%;height:26px;background:#14171c;border:1px solid #2a2f38}
+.theme-preview[data-p="batman"] .pb{left:8px;bottom:7px;width:42px;height:10px;background:#d8a928;clip-path:polygon(4px 0,100% 0,100% 60%,calc(100% - 4px) 100%,0 100%,0 4px)}
+.theme-preview[data-p="batman"] .dot{right:10px;top:24px;width:22px;height:22px;background:#d8a928;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);opacity:.85}
+.theme-preview[data-p="linkin-park"]{background:radial-gradient(circle,rgba(20,20,24,.18) 1px,transparent 1.4px) 0 0/6px 6px,#ebe8e1}
+.theme-preview[data-p="linkin-park"] .bar{left:0;right:0;top:0;height:12px;background:#f8f6f1;border-bottom:3px solid #17171b}
+.theme-preview[data-p="linkin-park"] .blk{left:8px;top:22px;width:58%;height:26px;background:#f8f6f1;border:2px solid #17171b;box-shadow:3px 3px 0 #17171b}
+.theme-preview[data-p="linkin-park"] .pb{left:8px;bottom:7px;width:42px;height:10px;background:#b3201f;border:2px solid #17171b}
+.theme-preview[data-p="linkin-park"] .dot{right:8px;top:22px;width:34px;height:12px;background:#b3201f;transform:skew(-10deg) rotate(-3deg)}
+.theme-switch-note{margin-top:10px;font-size:11px;color:var(--text-muted)}
+
+@media (max-width:360px){.theme-switch{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){[data-theme="linkin-park"] .settings-card:hover,[data-theme="linkin-park"] .btn:hover{transform:none}}
+html,body{overflow-x:hidden}
+
+
+/* ==========================================================================
+   31. CONTROL READABILITY PASS — solid fields, visible selects, button contrast
+   Controls never take artwork/gradient backgrounds. Missing artwork = nothing.
+   ========================================================================== */
+:root, :root[data-theme="batman"] {
+  --field-bg:#171c24; --field-border:rgba(205,214,228,.38); --field-text:#f3f5f8;
+  --field-arrow:#f0c94a; --btn-text:#0a0803; --btn-text-2:#eceef2;
+}
+:root[data-theme="linkin-park"] {
+  --field-bg:#fffdf8; --field-border:#17171b; --field-text:#15151a;
+  --field-arrow:#17171b; --btn-text:#fff; --btn-text-2:#15151a;
+}
+
+/* every form control: solid, bordered, readable (selects keep their arrow) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select, textarea,
+.form-input, .form-select, .form-textarea,
+.history-filter-select, .history-search-input, .workout-set-input,
+.strength-progress-selector select, .exercise-name-input, .input, .select, .textarea {
+  background-color: var(--field-bg);
+  background-image: none;
+  color: var(--field-text);
+  -webkit-text-fill-color: var(--field-text);
+  border: 1px solid var(--field-border);
+  opacity: 1;
+}
+select, .form-select, .history-filter-select, .strength-progress-selector select, .select {
+  -webkit-appearance: none; appearance: none;
+  min-height: 44px; padding-right: 36px;
+  font-size: 14px; font-weight: 500;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--field-arrow) 50%),
+    linear-gradient(135deg, var(--field-arrow) 50%, transparent 50%);
+  background-position: calc(100% - 19px) 50%, calc(100% - 14px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+select option { background: var(--field-bg); color: var(--field-text); }
+input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; -webkit-text-fill-color: var(--text-muted); }
+[data-theme="linkin-park"] select, [data-theme="linkin-park"] .form-select,
+[data-theme="linkin-park"] .history-filter-select, [data-theme="linkin-park"] .strength-progress-selector select { border-width: 2px; }
+.history-search-wrapper { background: none; }
+.history-search-icon { color: var(--text-secondary); }
+.exercise-picker-list { background: var(--field-bg); border: 1px solid var(--field-border); }
+.exercise-picker-option-name { color: var(--field-text); }
+
+/* primary actions: bright fill + guaranteed contrast text */
+.btn-primary, .primary-btn, .auth-primary, .workout-primary-button, .workout-log-button,
+.dash-full-button, .history-save-edit, .goals-actions .primary-btn, .day-add-button.primary {
+  color: var(--btn-text); -webkit-text-fill-color: var(--btn-text); font-weight: 700;
+}
+[data-theme="batman"] .workout-log-button,
+[data-theme="batman"] .history-save-edit {
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent) 55%, var(--accent-dark));
+  border: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+}
+[data-theme="linkin-park"] .workout-log-button,
+[data-theme="linkin-park"] .history-save-edit { background: var(--accent); border: 2px solid #17171b; box-shadow: var(--btn-shadow); }
+.btn-primary:hover, .primary-btn:hover:not(:disabled), .workout-log-button:hover, .workout-primary-button:hover:not(:disabled), .dash-full-button:hover { color: var(--btn-text); -webkit-text-fill-color: var(--btn-text); }
+.btn-primary:disabled, .primary-btn:disabled, .workout-primary-button:disabled { opacity: .6; color: var(--btn-text); -webkit-text-fill-color: var(--btn-text); }
+
+/* secondary / utility controls: clear border + full-strength text */
+.btn-secondary, .secondary-btn, .auth-secondary, .auth-google, .workout-small-button,
+.history-edit-btn, .history-expand-btn, .history-cancel-edit, .history-load-more-button,
+.settings-action-button, .settings-back-button, .dash-link-button, .exercise-order-button {
+  color: var(--btn-text-2); -webkit-text-fill-color: var(--btn-text-2);
+  border: 1px solid var(--field-border); font-weight: 600; opacity: 1;
+}
+[data-theme="linkin-park"] .btn-secondary, [data-theme="linkin-park"] .secondary-btn,
+[data-theme="linkin-park"] .workout-small-button, [data-theme="linkin-park"] .history-edit-btn,
+[data-theme="linkin-park"] .history-expand-btn, [data-theme="linkin-park"] .history-cancel-edit { border: 2px solid #17171b; background: var(--bg-panel); }
+.btn-danger, .history-delete-btn, .workout-small-button.danger, .exercise-delete-button {
+  color: var(--danger-text); -webkit-text-fill-color: var(--danger-text);
+  border: 1px solid rgba(var(--danger-rgb), .65); font-weight: 600;
+}
+.day-add-button { color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); border-color: var(--field-border); }
+[data-theme="batman"] .nav-btn { color: #8a93a3; }
+[data-theme="batman"] .nav-btn.active { color: var(--accent-bright); }
+[data-theme="batman"] .nav-label { font-size: 9px; }
+.theme-option { color: var(--text-primary); -webkit-text-fill-color: var(--text-primary); }
+.theme-option-sub { -webkit-text-fill-color: var(--text-muted); }
+.today-badge, .nutrition-badge, .dash-done-badge { font-weight: 700; }
+[data-theme="linkin-park"] .today-badge, [data-theme="linkin-park"] .nutrition-badge, [data-theme="linkin-park"] .dash-done-badge { color: #fff; }
+
+/* nested cards: only the outer panel gets corner brackets */
+[data-theme="batman"] .progress-panel .stat-card, [data-theme="batman"] .progress-panel .progress-stat-card,
+[data-theme="batman"] .nutrition-panel .nutrition-active, [data-theme="batman"] .workout-day-card .workout-plan-card,
+[data-theme="batman"] .history-workout-card .history-edit-exercise { background: var(--card-bg); }
+
+/* artwork slots are decoration only: a missing/failed slot paints nothing and takes no space */
+body::before { background-color: transparent; }
+[data-theme-asset-state="missing"] { display: none !important; }
+
+/* final precedence: Log Workout is a primary action even though it shares .workout-small-button */
+button.workout-log-button, button.workout-log-button:hover {
+  color: var(--btn-text); -webkit-text-fill-color: var(--btn-text); font-weight: 700;
+}
+[data-theme="linkin-park"] button.workout-log-button { background: var(--accent); border: 2px solid #17171b; box-shadow: var(--btn-shadow); }
+[data-theme="batman"] button.workout-log-button { background: linear-gradient(180deg, var(--accent-bright), var(--accent) 55%, var(--accent-dark)); border: 0; }

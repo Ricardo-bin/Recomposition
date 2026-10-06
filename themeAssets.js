@@ -73,3 +73,33 @@ export function getThemeAssets(themeId, themes = THEME_ASSETS) {
     )
   );
 }
+
+// ---------------------------------------------------------------------------
+// Which files you have actually put into each theme folder.
+// The app only requests assets listed here, so a not-yet-supplied file causes no
+// 404 and no empty artwork slot (the slot resolves to null = "nothing there").
+// When you add a file, add its key, e.g.  "batman": ["logo", "hero"],
+// ---------------------------------------------------------------------------
+export const PROVIDED_ASSETS = Object.freeze({
+  "batman": Object.freeze([]),
+  "linkin-park": Object.freeze([])
+});
+
+// THEME_ASSETS reduced to the provided files (every other key becomes null).
+export function onlyProvidedAssets(themes = THEME_ASSETS, provided = PROVIDED_ASSETS) {
+  return Object.freeze(
+    Object.fromEntries(
+      Object.keys(themes).map(id => [
+        id,
+        Object.freeze(
+          Object.fromEntries(
+            ASSET_KEYS.map(key => [
+              key,
+              provided[id]?.includes(key) ? themes[id][key] : null
+            ])
+          )
+        )
+      ])
+    )
+  );
+}
