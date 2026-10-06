@@ -81,8 +81,9 @@ export function getThemeAssets(themeId, themes = THEME_ASSETS) {
 // When you add a file, add its key, e.g.  "batman": ["logo", "hero"],
 // ---------------------------------------------------------------------------
 export const PROVIDED_ASSETS = Object.freeze({
-  "batman": Object.freeze([]),
-  "linkin-park": Object.freeze([])
+  // texture: none supplied yet (role intentionally inactive)
+  "batman": Object.freeze(["logo", "hero", "dashboard", "profile", "background", "decorative"]),
+  "linkin-park": Object.freeze(["logo", "hero", "dashboard", "profile", "background", "decorative"])
 });
 
 // THEME_ASSETS reduced to the provided files (every other key becomes null).

@@ -136,6 +136,10 @@ export function createThemeManager({
       );
     }
 
+    // Which roles exist for this theme, so CSS can reserve space only for real artwork.
+    doc.documentElement.dataset.themeArt =
+      ASSET_KEYS.filter(key => own[key]).join(" ");
+
     root?.querySelectorAll?.(SELECTOR).forEach(bindElement);
   }
 
