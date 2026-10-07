@@ -14,6 +14,7 @@ import {
   calculateNutritionRecommendation,
   buildNutritionInput,
   buildAppliedNutritionFields,
+  describeNutritionTarget,
   recommendationMatchesGoal,
   resolveNutritionSource,
   toGoalKey
@@ -45,6 +46,7 @@ let editingGoalId = null;
 let nutritionContext = null;     // { profile, weight, unit } | { failed: true } | null
 let nutritionRequest = 0;        // ignores stale async loads
 let displayWeightUnit = "kg";    // for weights shown on goal cards
+let currentWeightKg = null;      // from Weight History (currentWeight.js), display/compare only
 
 
 // ============================================================================
@@ -102,10 +104,17 @@ export async function loadGoals(container) {
 
     goals = await getGoals();
 
-    // Only used to show weights in the preferred unit; a failure is harmless.
-    displayWeightUnit = normalizeWeightUnit(
-      (await getProfile().catch(() => null))?.unitPreference
-    );
+    // Only used to show weights in the preferred unit and to notice that the
+    // current weight has moved since a target was calculated; a failure is harmless.
+    const [profile, weightHistory] = await Promise.all([
+      getProfile().catch(() => null),
+      getWeightHistory().catch(() => [])
+    ]);
+
+    displayWeightUnit = normalizeWeightUnit(profile?.unitPreference);
+
+    currentWeightKg =
+      resolveCurrentWeight(weightHistory, profile?.currentWeight).weightKg;
 
     renderGoals(container);
 
@@ -176,6 +185,9 @@ function renderGoals(container) {
     </div>
 
 
+    ${renderTargetSummary(goals.find(goal => goal.id === currentGoalId))}
+
+
     <div class="goals-actions">
 
       <button
@@ -231,6 +243,154 @@ function renderGoals(container) {
 
 
   attachGoalEvents();
+}
+
+
+// ============================================================================
+// CURRENT NUTRITION TARGET (read-only summary of the goal the Dashboard uses)
+// ----------------------------------------------------------------------------
+// Shows the SAVED, active numbers and where they came from. It never calculates
+// or saves anything: a calculated suggestion is the RECOMMENDATION shown in the
+// goal form, and it only becomes the target when the user applies it.
+// ============================================================================
+
+const targetNumber = value =>
+  value === null || value === undefined ? "—" : String(Math.round(value));
+
+function describeBasis(goal, info) {
+  if (info.kind !== "recommended") {
+    return "These are numbers you entered yourself. They are not calculated for you.";
+  }
+
+  const basis = info.basis;
+
+  const parts = [];
+
+  if (basis.adjustmentPercent === 0) {
+    parts.push("at estimated maintenance calories");
+  } else if (basis.adjustmentPercent !== null) {
+    parts.push(
+      `about ${Math.abs(basis.adjustmentPercent)}% ${basis.adjustmentPercent > 0 ? "above" : "below"} estimated maintenance calories`
+    );
+  }
+
+  if (basis.proteinPerKg !== null) {
+    parts.push(`protein ${basis.proteinPerKg} g per kg of body weight`);
+  }
+
+  if (basis.basedOnWeightKg !== null) {
+    parts.push(`based on ${formatWeight(basis.basedOnWeightKg, displayWeightUnit)}`);
+  }
+
+  if (basis.appliedDate) {
+    parts.push(`applied ${basis.appliedDate}`);
+  }
+
+  return `Recommended for ${formatGoalType(goal.goalType)}${parts.length ? ": " + parts.join(", ") : ""}.`;
+}
+
+function renderTargetSummary(goal) {
+
+  if (goals.length === 0) {
+    return "";
+  }
+
+  if (!goal) {
+    return `
+      <div class="panel nutrition-target-card" data-nutrition-target="none">
+        <div class="section-kicker">CURRENT GOAL</div>
+        <p class="nutrition-note">
+          None of your goals covers today, so there is no active nutrition
+          target. Edit a goal's dates or create a new goal.
+        </p>
+      </div>
+    `;
+  }
+
+  const info = describeNutritionTarget(goal, currentWeightKg);
+
+  const cells = [
+    ["DAILY CALORIES", info.values.calories, "kcal"],
+    ["PROTEIN", info.values.protein, "g"],
+    ["CARBOHYDRATES", info.values.carbs, "g"],
+    ["FAT", info.values.fat, "g"]
+  ];
+
+  return `
+    <div class="panel nutrition-target-card" data-nutrition-target="${info.kind}">
+
+      <div class="nutrition-target-top">
+        <div>
+          <div class="section-kicker">CURRENT GOAL</div>
+          <h3>${escapeHtml(formatGoalType(goal.goalType))}</h3>
+        </div>
+
+        <span class="nutrition-badge" data-target-kind>
+          ${info.kind === "recommended" ? "RECOMMENDED" : "CUSTOM"}
+        </span>
+      </div>
+
+      ${
+        info.hasTargets
+          ? `
+            <div class="nutrition-target-grid">
+              ${cells.map(([label, value, unit]) => `
+                <div>
+                  <span>${label}</span>
+                  <strong>${escapeHtml(targetNumber(value))}${value === null ? "" : ` <small>${unit}</small>`}</strong>
+                </div>
+              `).join("")}
+            </div>
+          `
+          : `
+            <p class="nutrition-note">
+              No nutrition targets are saved on this goal yet. Edit it to
+              review a recommendation or enter your own numbers.
+            </p>
+          `
+      }
+
+      <p class="nutrition-note nutrition-disclaimer">
+        Estimated daily target: a practical starting point, not an exact
+        requirement. Adjust it based on your real-world progress.
+      </p>
+
+      ${info.hasTargets ? `<p class="nutrition-basis">${escapeHtml(describeBasis(goal, info))}</p>` : ""}
+
+      ${
+        info.weightChangedFromKg !== null && currentWeightKg !== null
+          ? `
+            <p class="nutrition-note" data-target-weight-note>
+              Your latest weight is ${escapeHtml(formatWeight(currentWeightKg, displayWeightUnit))};
+              these targets were calculated from ${escapeHtml(formatWeight(info.weightChangedFromKg, displayWeightUnit))}.
+              Your saved target is unchanged. Edit this goal to review an updated recommendation.
+            </p>
+          `
+          : ""
+      }
+
+      ${
+        info.macroGap
+          ? `
+            <p class="nutrition-note" data-target-macro-note>
+              Your protein, carbs and fat add up to about
+              ${escapeHtml(info.macroGap.macroCalories)} kcal, which is not close to
+              your ${escapeHtml(info.macroGap.calories)} kcal calorie target.
+            </p>
+          `
+          : ""
+      }
+
+      <button
+        type="button"
+        class="secondary-btn btn-edit-current-goal"
+        data-id="${escapeHtml(goal.id)}"
+      >
+        Edit Goal
+      </button>
+
+    </div>
+  `;
 }
 
 
@@ -519,6 +679,16 @@ function renderGoalForm() {
         current. They don't measure progress.
       </p>
 
+      <p
+        class="form-hint goal-history-hint"
+        id="goal-history-hint"
+        hidden
+      >
+        You are changing the type of a saved goal, which replaces it. To keep
+        this goal as history, cancel and create a new goal with a later start
+        date instead.
+      </p>
+
       <div
         class="nutrition-panel"
         id="goal-nutrition-panel"
@@ -558,7 +728,10 @@ function renderGoalForm() {
   // review. Nothing is saved until the user presses APPLY RECOMMENDATION.
   document
     .getElementById("goal-type")
-    ?.addEventListener("change", renderNutritionPanel);
+    ?.addEventListener("change", () => {
+      updateHistoryHint();
+      renderNutritionPanel();
+    });
 
   initNutritionPanel();
 
@@ -573,6 +746,23 @@ function renderGoalForm() {
 
     });
 
+}
+
+
+// Editing an existing goal and switching its type overwrites that goal. Say so,
+// and point at the way to keep it as history (a new goal with a later start).
+function updateHistoryHint() {
+  const hint = document.getElementById("goal-history-hint");
+
+  if (!hint) {
+    return;
+  }
+
+  const existing = goals.find(goal => goal.id === editingGoalId);
+  const selected = document.getElementById("goal-type")?.value;
+
+  hint.hidden =
+    !existing || toGoalKey(existing.goalType) === toGoalKey(selected);
 }
 
 
@@ -608,6 +798,29 @@ async function saveGoalFromForm() {
 
     alert(
       "Goal type and start date are required."
+    );
+
+    return;
+  }
+
+
+  // Targets must be real numbers: calories above zero, macros zero or more.
+  const entered = { calories, protein, carbs, fat };
+
+  const invalid = Object.entries(entered).some(([field, raw]) => {
+    if (raw === "") {
+      return false;
+    }
+
+    const number = Number(raw);
+
+    return !Number.isFinite(number) || number < 0 || (field === "calories" && number === 0);
+  });
+
+  if (invalid) {
+
+    alert(
+      "Calories must be above 0, and protein, carbs and fat must be 0 or more."
     );
 
     return;
@@ -865,14 +1078,46 @@ function renderNutritionPanel() {
           <li>${escapeHtml(item.message)}</li>
         `).join("")}
       </ul>
-      <button
-        type="button"
-        class="secondary-btn"
-        id="btn-open-profile"
-      >
-        Open Profile
-      </button>
+      ${
+        result.errors.some(item => item.field !== "weightKg")
+          ? `
+            <button
+              type="button"
+              class="secondary-btn"
+              id="btn-open-profile"
+            >
+              Open Profile
+            </button>
+          `
+          : ""
+      }
+      ${
+        result.errors.some(item => item.field === "weightKg")
+          ? `
+            <p class="nutrition-note">
+              Your current weight comes from Weight History. Add a weigh-in there.
+            </p>
+            <button
+              type="button"
+              class="secondary-btn"
+              id="btn-open-weight-history"
+            >
+              Open Weight History
+            </button>
+          `
+          : ""
+      }
     `;
+
+    document
+      .getElementById("btn-open-weight-history")
+      ?.addEventListener("click", () => {
+        window.RecompositionNavigation?.showSection("settings");
+
+        document
+          .getElementById("settings-weight")
+          ?.click();
+      });
 
     document
       .getElementById("btn-open-profile")
@@ -1030,13 +1275,20 @@ async function applyRecommendation() {
       );
     });
 
-  if (hasDifferentActive) {
+  const changesType =
+    existing && toGoalKey(existing.goalType) !== toGoalKey(goalType);
+
+  if (hasDifferentActive || changesType) {
     const confirmed = confirm(
       "Replace your active targets with the recommendation?\n\n" +
       `Now: ${existing.calories ?? "—"} kcal · ${existing.protein ?? "—"} g protein · ` +
       `${existing.carbs ?? "—"} g carbs · ${existing.fat ?? "—"} g fat\n` +
       `New: ${result.calories} kcal · ${result.protein} g protein · ` +
-      `${result.carbs} g carbs · ${result.fat} g fat`
+      `${result.carbs} g carbs · ${result.fat} g fat` +
+      (changesType
+        ? `\n\nThis also changes the goal type from ${formatGoalType(existing.goalType)} to ${goalType}. ` +
+          "To keep the old goal as history, cancel and create a new goal with a later start date."
+        : "")
     );
 
     if (!confirmed) {
@@ -1091,7 +1343,24 @@ async function applyRecommendation() {
 // EDIT / DELETE EVENTS
 // ============================================================================
 
+function startEditingGoal(goalId) {
+  editingGoalId = goalId;
+
+  renderGoalForm();
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+
 function attachGoalEvents() {
+
+  document
+    .querySelectorAll(".btn-edit-current-goal")
+    .forEach(button => {
+      button.addEventListener("click", () => startEditingGoal(button.dataset.id));
+    });
 
 
   document
@@ -1100,19 +1369,7 @@ function attachGoalEvents() {
 
       button.addEventListener(
         "click",
-        () => {
-
-          editingGoalId =
-            button.dataset.id;
-
-          renderGoalForm();
-
-          window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-          });
-
-        }
+        () => startEditingGoal(button.dataset.id)
       );
 
     });

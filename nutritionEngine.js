@@ -479,3 +479,91 @@ export function buildAppliedNutritionFields(recommendation, now = new Date()) {
     nutritionFormulaVersion: recommendation.calculationMetadata.formulaVersion
   };
 }
+
+
+// --------------------------------------------------------------------------
+// Describing a SAVED target (read-only; no calculation, nothing is changed)
+// --------------------------------------------------------------------------
+
+const savedNumber = value => {
+  if (value === null || value === undefined || value === "") return null;
+
+  const number = Number(value);
+
+  return Number.isFinite(number) && number >= 0 ? number : null;
+};
+
+// Calories implied by a goal's protein, carbs and fat (4 / 4 / 9 kcal per g);
+// null unless all three are saved numbers.
+export function macroCaloriesOf(goal) {
+  const protein = savedNumber(goal?.protein);
+  const carbs = savedNumber(goal?.carbs);
+  const fat = savedNumber(goal?.fat);
+
+  if (protein === null || carbs === null || fat === null) return null;
+
+  return KCAL_PER_G.protein * protein + KCAL_PER_G.carbs * carbs + KCAL_PER_G.fat * fat;
+}
+
+// How the current goal's saved target should be presented.
+//   kind  "recommended"  the numbers came from APPLYING a recommendation
+//         "custom"       anything the user typed (Custom goal, edited numbers,
+//                        or a goal saved before nutrition metadata existed)
+// `currentWeightKg` (from currentWeight.js) is only compared with the weight the
+// target was calculated from, to say the target may be out of date. The saved
+// target is never recalculated or rewritten here.
+// macroNote is set only for custom targets whose macros are not reasonably close
+// to their calories (more than 10% apart).
+export function describeNutritionTarget(goal, currentWeightKg = null) {
+  if (!goal) return null;
+
+  const values = {
+    calories: savedNumber(goal.calories),
+    protein: savedNumber(goal.protein),
+    carbs: savedNumber(goal.carbs),
+    fat: savedNumber(goal.fat)
+  };
+
+  const hasTargets = Object.values(values).some(value => value !== null);
+  const kind = goal.nutritionSource === "recommended" ? "recommended" : "custom";
+
+  const result = {
+    goalType: goal.goalType || "Custom",
+    values,
+    hasTargets,
+    kind,
+    basis: null,
+    weightChangedFromKg: null,
+    macroGap: null
+  };
+
+  if (kind === "recommended") {
+    const rule = GOAL_RULES[toGoalKey(goal.calculatedFromGoal)];
+    const basedOn = positiveNumber(goal.calculatedFromWeightKg);
+    const now = positiveNumber(currentWeightKg);
+
+    result.basis = {
+      adjustmentPercent: rule ? Math.round(rule.adjustment * 100) : null,
+      proteinPerKg: rule ? rule.proteinPerKg : null,
+      basedOnWeightKg: basedOn,
+      appliedDate: goal.nutritionAppliedAt ? String(goal.nutritionAppliedAt).slice(0, 10) : null
+    };
+
+    // 1 kg or more since the numbers were calculated: worth a second look.
+    if (basedOn !== null && now !== null && Math.abs(now - basedOn) >= 1) {
+      result.weightChangedFromKg = basedOn;
+    }
+  } else {
+    const macros = macroCaloriesOf(goal);
+
+    if (macros !== null && values.calories !== null && values.calories > 0) {
+      const gap = Math.abs(macros - values.calories);
+
+      if (gap > values.calories * 0.1) {
+        result.macroGap = { macroCalories: Math.round(macros), calories: values.calories };
+      }
+    }
+  }
+
+  return result;
+}

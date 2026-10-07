@@ -5097,6 +5097,76 @@ textarea {
   letter-spacing: 1px;
 }
 
+.nutrition-target-card {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-bottom: var(--space-4);
+}
+
+.nutrition-target-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.nutrition-target-top h3 {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.nutrition-target-top .nutrition-badge {
+  flex: 0 0 auto;
+}
+
+.nutrition-target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.nutrition-target-grid > div {
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.nutrition-target-grid span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.nutrition-target-grid strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nutrition-target-grid small {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.nutrition-target-card .secondary-btn {
+  min-height: 44px;
+  margin-top: var(--space-2);
+}
+
+.goal-history-hint {
+  margin-top: var(--space-3);
+  color: var(--accent);
+}
+
 .nutrition-basis {
   margin-bottom: var(--space-3);
   color: var(--text-secondary);
