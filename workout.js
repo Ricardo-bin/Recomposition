@@ -419,3 +419,17 @@ window.addEventListener(
 window.RecompositionWorkout = {
   render: renderWorkout
 };
+
+
+// Signed out: drop the previous user's plans and screen.
+window.addEventListener("recomposition-signed-out", () => {
+  workoutPlans = [];
+  workoutRenderRequestId += 1;      // a render still in flight must not paint
+
+  const container = document.getElementById("workout-content");
+
+  if (container) {
+    container.innerHTML = "";
+  }
+});
+

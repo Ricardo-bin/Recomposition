@@ -2,6 +2,8 @@
 // RECOMPOSITION — PROGRESS
 // ============================================================================
 
+import { isCompletedLog } from "./workoutLogStatus.js";
+
 import {
   getAllWorkoutLogs,
   getWeightHistory,
@@ -182,9 +184,7 @@ export async function loadProgress() {
   try {
 
     const logs =
-      (await getAllWorkoutLogs()).filter(
-        log => !log.status || log.status === "completed"
-      );
+      (await getAllWorkoutLogs()).filter(isCompletedLog);
 
 
     renderProgress(
@@ -859,7 +859,7 @@ const workoutsThisMonth =
 
             ${strengthProgress.map((item, index) => `
               <option value="${index}">
-                ${item.name}
+                ${escapeHtml(item.name)}
               </option>
             `).join("")}
 
@@ -915,7 +915,7 @@ const workoutsThisMonth =
               <div class="personal-record-main">
 
                 <div class="personal-record-name">
-                  ${record.name}
+                  ${escapeHtml(record.name)}
                 </div>
 
                 <div class="personal-record-set">
@@ -1107,7 +1107,7 @@ const workoutsThisMonth =
                     <div class="progress-activity-main">
 
                       <div class="progress-activity-name">
-                        ${workoutName}
+                        ${escapeHtml(workoutName)}
                       </div>
 
                       <div class="progress-activity-meta">
@@ -1493,3 +1493,17 @@ function calculatePersonalRecords(logs) {
 window.RecompositionProgress = {
   loadProgress
 };
+
+
+// ============================================================================
+// SIGN-OUT: drop the previous user's screen
+// ============================================================================
+
+window.addEventListener("recomposition-signed-out", () => {
+  const container = getProgressContainer();
+
+  if (container) {
+    container.innerHTML = "";
+  }
+});
+

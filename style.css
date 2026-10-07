@@ -7446,3 +7446,447 @@ body::before {
 .sync-status span {
   color: var(--text-secondary);
 }
+
+
+/* ==========================================================================
+   HISTORY — DEPTH (cards, filters, detail view, comparison)
+   Uses only theme variables, so Batman and Linkin Park both work.
+   Touch targets are at least 44px; nothing is wider than the screen.
+   ========================================================================== */
+
+/* ---- toolbar -------------------------------------------------------------- */
+
+.history-filter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.history-filter-grid .history-filter-select {
+  min-height: 44px;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.history-custom-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.history-custom-range[hidden] {
+  display: none;
+}
+
+.history-custom-range label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+}
+
+.history-date-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+
+  font: inherit;
+  font-size: 13px;
+}
+
+.history-filter-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  margin-top: 8px;
+
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.history-clear-filters {
+  min-height: 44px;
+  padding: 0 14px;
+
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+
+  cursor: pointer;
+}
+
+.history-clear-filters[hidden] {
+  display: none;
+}
+
+/* ---- cards ---------------------------------------------------------------- */
+
+.history-card-open {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  width: 100%;
+  min-height: 64px;
+  box-sizing: border-box;
+  padding: 14px 16px;
+
+  color: inherit;
+  background: transparent;
+  border: 0;
+
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.history-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.history-card-main .history-workout-title {
+  overflow-wrap: anywhere;
+}
+
+.history-card-main .history-workout-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.history-card-chevron {
+  flex-shrink: 0;
+
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.history-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.history-badges:empty {
+  display: none;
+}
+
+.history-badge {
+  padding: 3px 7px;
+
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+
+.history-badge-pending {
+  color: var(--text-primary);
+  background: var(--bg-panel-2);
+  border-color: var(--border-medium);
+}
+
+/* ---- pending sync --------------------------------------------------------- */
+
+.history-pending {
+  margin-bottom: 18px;
+}
+
+.history-pending-title {
+  margin: 0 0 4px;
+
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: normal;
+  letter-spacing: 1px;
+}
+
+.history-pending-note {
+  margin: 0 0 10px;
+
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* ---- detail view ---------------------------------------------------------- */
+
+.history-detail {
+  min-width: 0;
+}
+
+.history-back-btn {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 44px;
+  margin-bottom: 10px;
+  padding: 0 14px;
+
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+
+  cursor: pointer;
+}
+
+.history-detail-header {
+  margin-bottom: 14px;
+}
+
+.history-detail-header h2 {
+  margin: 4px 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.history-detail-header .history-workout-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-bottom: 8px;
+}
+
+.history-detail-exercise {
+  min-width: 0;
+  margin-bottom: 12px;
+  padding: 14px;
+
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.history-detail-name {
+  margin: 0 0 8px;
+
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: 0.5px;
+  overflow-wrap: anywhere;
+}
+
+.history-target-line {
+  margin-bottom: 8px;
+
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+/* Alternative Today: planned vs performed */
+
+.history-alt {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+}
+
+.history-alt-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-alt-row + .history-alt-row {
+  margin-top: 8px;
+}
+
+.history-alt-label {
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.history-alt-name {
+  color: var(--text-primary);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.history-alt-note {
+  margin-top: 8px;
+
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* sets */
+
+.history-detail-set {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 8px;
+
+  min-height: 40px;
+  padding: 6px 2px;
+
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.history-detail-set-number {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.history-detail-set-value {
+  color: var(--text-primary);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.history-detail-set-rir {
+  color: var(--text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.history-best {
+  margin-top: 10px;
+
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  overflow-wrap: anywhere;
+}
+
+.history-detail-notes {
+  margin-top: 8px;
+  padding: 8px 10px;
+
+  color: var(--text-secondary);
+  background: var(--bg-panel-2);
+  border-radius: 6px;
+
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* previous-session comparison */
+
+.history-compare {
+  margin-top: 12px;
+  padding-top: 10px;
+
+  border-top: 1px solid var(--border-subtle);
+}
+
+.history-compare-head {
+  margin-bottom: 6px;
+
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+}
+
+.history-compare-status {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.history-compare-row {
+  display: grid;
+  grid-template-columns: 34px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+
+  min-height: 34px;
+  padding: 4px 2px;
+
+  color: var(--text-primary);
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.history-compare-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.history-compare-heading {
+  min-height: 24px;
+
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+}
+
+.history-compare-note {
+  margin-top: 8px;
+
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* actions */
+
+.history-detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.history-detail-actions .history-edit-btn,
+.history-detail-actions .history-delete-btn {
+  min-height: 48px;
+  font-size: 11px;
+}

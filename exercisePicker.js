@@ -105,9 +105,26 @@ export function libraryLinkField(planExercise) {
 // ----------------------------------------------------------------------------
 
 // EXPLICIT library selection. Replaces the name with the library's canonical
-// name and sets libraryExerciseId. Everything else (including `id` and the
+// name and sets libraryExerciseId. Everything else (including the
 // prescription: sets, reps, RIR, rest, notes) is preserved.
-export function applyLibrarySelection(planExercise, libraryExercise) {
+//
+// IDENTITY: `id` is the plan SLOT id; workout logs and Progress group by it. When
+// the slot was linked to a DIFFERENT library exercise, this is a new exercise, so
+// it gets a NEW slot id (old logs keep the old id and stay untouched). Linking a
+// legacy/custom exercise, or re-picking the same library exercise, keeps the id.
+//
+// options.previousLibraryExerciseId: the library exercise this slot was linked
+// to before the user started typing (typing unlinks it, so the editor remembers
+// it). Defaults to the exercise's current link.
+// options.createId: injectable for tests.
+export function applyLibrarySelection(
+  planExercise,
+  libraryExercise,
+  {
+    previousLibraryExerciseId = undefined,
+    createId = () => globalThis.crypto.randomUUID()
+  } = {}
+) {
   if (!planExercise || typeof planExercise !== "object") {
     throw new TypeError("applyLibrarySelection: planExercise must be an object");
   }
@@ -122,8 +139,18 @@ export function applyLibrarySelection(planExercise, libraryExercise) {
     );
   }
 
+  const previous = isNonEmptyString(previousLibraryExerciseId)
+    ? previousLibraryExerciseId
+    : isLinked(planExercise)
+      ? planExercise.libraryExerciseId
+      : null;
+
+  const changesIdentity =
+    previous !== null && previous !== libraryExercise.id;
+
   return {
     ...planExercise,
+    ...(changesIdentity ? { id: createId() } : {}),
     name: libraryExercise.name,
     libraryExerciseId: libraryExercise.id
   };

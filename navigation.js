@@ -206,6 +206,9 @@ if (document.readyState === "loading") {
 onAuthStateChanged(auth, user => {
 
   if (!user) {
+    // Signed out (or no session yet): every module drops the previous user's
+    // in-memory data and screen so nothing can show to the next account.
+    window.dispatchEvent(new CustomEvent("recomposition-signed-out"));
     return;
   }
 

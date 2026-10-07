@@ -14,6 +14,8 @@ import { fileURLToPath } from "node:url";
 import * as progressMetrics from "../progressMetrics.js";
 import * as units from "../units.js";
 import * as currentWeight from "../currentWeight.js";
+import * as logStatus from "../workoutLogStatus.js";
+import * as activeGoal from "../activeGoal.js";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 
 const JSDOM = await loadJSDOM();
@@ -48,6 +50,10 @@ function loadModule(file, { html, overrides = {}, auth = { currentUser: { uid: "
       stubs[name] = units[name];
     } else if (from === "./progressMetrics.js") {
       stubs[name] = progressMetrics[name];
+    } else if (from === "./workoutLogStatus.js") {
+      stubs[name] = logStatus[name];
+    } else if (from === "./activeGoal.js") {
+      stubs[name] = activeGoal[name];
     } else if (from === "./currentWeight.js") {
       stubs[name] = currentWeight[name];
     } else if (name in overrides) {

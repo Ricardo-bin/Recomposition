@@ -2,6 +2,10 @@
 // RECOMPOSITION — Dashboard
 // ============================================================================
 
+import { isCompletedLog } from "./workoutLogStatus.js";
+
+import { findActiveGoal } from "./activeGoal.js";
+
 import {
   getProfile,
   getWorkoutPlans,
@@ -112,18 +116,6 @@ function countLoggedSets(log) {
   }, 0);
 }
 
-function findActiveGoal(goals) {
-  const today = dateKey(new Date());
-  return goals
-    .filter(goal =>
-      (!goal.startDate || goal.startDate <= today) &&
-      (!goal.endDate || goal.endDate >= today)
-    )
-    .sort((a, b) =>
-      String(b.startDate || "").localeCompare(String(a.startDate || ""))
-    )[0] || null;
-}
-
 function safeLoad(promise, fallback) {
   return promise.catch(error => {
     console.error("Dashboard optional data failed:", error);
@@ -190,9 +182,7 @@ async function renderDashboard() {
     const hasWeight =
       weight !== null && weight !== undefined && weight !== "";
 
-    const completedLogs = workoutLogs.filter(
-      log => log.status === "completed"
-    );
+    const completedLogs = workoutLogs.filter(isCompletedLog);
 
     const todayKey = dateKey(new Date());
 
@@ -222,7 +212,7 @@ async function renderDashboard() {
     ).size;
 
     const recentLogs = completedLogs.slice(0, 3);
-    const activeGoal = findActiveGoal(goals);
+    const activeGoal = findActiveGoal(goals, dateKey(new Date()));
 
     const allTodayDone =
       todayPlans.length > 0 &&
@@ -548,3 +538,17 @@ window.addEventListener(
 window.RecompositionDashboard = {
   render: renderDashboard
 };
+
+
+// ============================================================================
+// SIGN-OUT: drop the previous user's screen
+// ============================================================================
+
+window.addEventListener("recomposition-signed-out", () => {
+  const container = document.getElementById("dashboard-content");
+
+  if (container) {
+    container.innerHTML = "";
+  }
+});
+

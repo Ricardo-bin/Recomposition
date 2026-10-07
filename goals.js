@@ -1177,3 +1177,22 @@ function attachGoalEvents() {
     });
 
 }
+
+
+// ============================================================================
+// SIGN-OUT: drop the previous user's goals and nutrition context
+// ============================================================================
+
+window.addEventListener("recomposition-signed-out", () => {
+  goals = [];
+  editingGoalId = null;
+  nutritionContext = null;
+  nutritionRequest += 1;      // a load still in flight must not render later
+
+  const container = document.getElementById("settings-goals-content");
+
+  if (container) {
+    container.innerHTML = "";
+  }
+});
+

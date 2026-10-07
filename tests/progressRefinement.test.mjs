@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 import * as units from "../units.js";
 import * as progressMetrics from "../progressMetrics.js";
+import * as logStatus from "../workoutLogStatus.js";
 
 const JSDOM = await loadJSDOM();
 const skip = JSDOM ? false : SKIP_MESSAGE;
@@ -40,6 +41,7 @@ async function openProgress({ logs = [], weights = [], measurements = [], unit =
     getProfile: async () => ({ unitPreference: unit }),
     formatWeight: units.formatWeight,
     normalizeWeightUnit: units.normalizeWeightUnit,
+    isCompletedLog: logStatus.isCompletedLog,
     ...progressMetrics
   };
 
@@ -107,6 +109,27 @@ test("an exercise logged under an alternative keeps its own strength line", { sk
   assert.match(p.text(p.$("#strength-progress-detail")), /LATEST 32 kg × 10/);
 });
 
+
+test("after an exercise identity change, the old and new exercise are separate strength lines", { skip }, async () => {
+  const leg = (id, w) => log(id, daysAgo(id === "L1" ? 21 : 14), [{ exerciseId: "slot-1", name: "Leg Press", sets: [{ weight: w, reps: "10" }] }]);
+  const hack = (id, w) => log(id, daysAgo(id === "L3" ? 7 : 1), [{ exerciseId: "slot-NEW", name: "Machine Hack Squat", sets: [{ weight: w, reps: "10" }] }]);
+
+  const p = await openProgress({ logs: [leg("L1", "100"), leg("L2", "110"), hack("L3", "60"), hack("L4", "65")] });
+
+  const names = p.$$("#strength-exercise-select option").map(o => p.text(o));
+
+  assert.deepEqual([...names].sort(), ["Leg Press", "Machine Hack Squat"]);
+});
+
+test("exercise names are escaped in Progress (no HTML injection)", { skip }, async () => {
+  const evil = "<img src=x onerror=alert(1)>";
+  const e = (w) => [{ exerciseId: "slot-x", name: evil, sets: [{ weight: w, reps: "10" }] }];
+
+  const p = await openProgress({ logs: [log("L1", daysAgo(14), e("50")), log("L2", daysAgo(7), e("55"))] });
+
+  assert.equal(p.$$("#progress-content img").length, 0, "the name must be text, never markup");
+  assert.match(p.page(), /<img src=x onerror=alert\(1\)>/, "the text itself is still shown");
+});
 
 // ---- weekly volume ------------------------------------------------------------------
 

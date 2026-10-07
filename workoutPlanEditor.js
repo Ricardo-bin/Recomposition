@@ -76,6 +76,12 @@ let editingPlanId = null;
 
 let editingExercises = [];
 
+// slot id -> the library exercise that slot was linked to when it was loaded or
+// last picked. Typing in the name box unlinks an exercise, so this is how a
+// later pick of a DIFFERENT library exercise is recognised as a new exercise
+// (and given a new slot id). Editor-session only; never saved.
+const slotLibraryOrigin = new Map();
+
 let workoutRenderRequestId = 0;
 
 const EDITOR_CONTAINER_ID = "settings-workouts-page";
@@ -618,6 +624,14 @@ function openWorkoutForm(existingPlan = null) {
       ? structuredClone(existingPlan.exercises)
       : [];
 
+  slotLibraryOrigin.clear();
+
+  editingExercises.forEach(exercise => {
+    if (exercise?.id && exercise.libraryExerciseId) {
+      slotLibraryOrigin.set(exercise.id, exercise.libraryExerciseId);
+    }
+  });
+
 
   const isEditing =
     Boolean(editingPlanId);
@@ -1021,6 +1035,8 @@ function closeWorkoutForm() {
 
   editingExercises = [];
 
+  slotLibraryOrigin.clear();
+
 
   container.classList.add("hidden");
 
@@ -1147,11 +1163,23 @@ const exercisePickerContext = {
       return;
     }
 
+    const current = editingExercises[index];
+
     editingExercises[index] =
       applyLibrarySelection(
-        editingExercises[index],
-        libraryExercise
+        current,
+        libraryExercise,
+        {
+          previousLibraryExerciseId:
+            current.libraryExerciseId ||
+            slotLibraryOrigin.get(current.id)
+        }
       );
+
+    slotLibraryOrigin.set(
+      editingExercises[index].id,
+      libraryExercise.id
+    );
 
     syncExerciseTitle(index);
   },
@@ -2115,3 +2143,21 @@ async function saveWorkoutPlan() {
 window.RecompositionWorkoutEditor = {
   render: renderWorkout
 };
+
+
+// Signed out: drop the previous user's plans and any half-edited plan.
+window.addEventListener("recomposition-signed-out", () => {
+  workoutPlans = [];
+  editingPlanId = null;
+  editingExercises = [];
+  slotLibraryOrigin.clear();
+  workoutRenderRequestId += 1;
+
+  const form = document.getElementById("workout-plan-form-container");
+
+  if (form) {
+    form.classList.add("hidden");
+    form.innerHTML = "";
+  }
+});
+

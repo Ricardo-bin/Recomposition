@@ -74,6 +74,30 @@ export function isPending(uid, id, storage = globalThis.localStorage) {
   return readPending(uid, storage).some(item => item.id === id);
 }
 
+// A Firestore write can stay pending forever on a flaky connection (the browser
+// says "online" but nothing gets through). Without a limit, that one hung write
+// would block every later sync for the user. After this long the attempt is
+// counted as FAILED: the workout stays queued and the normal retry runs. A late
+// success of the abandoned write is harmless: it is the same set() on the same
+// document id.
+export const SYNC_WRITE_TIMEOUT_MS = 20000;
+
+export function withTimeout(promise, ms) {
+  let timer;
+
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(
+        `Sync timed out after ${Math.round(ms / 1000)}s; the workout is still saved on this device.`
+      );
+      error.code = "sync-timeout";
+      reject(error);
+    }, ms);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // One sync at a time per user, so two triggers (online + auth, say) never
 // race. A second call while one runs joins the running one.
 const running = new Map();
@@ -87,7 +111,8 @@ export function syncPending(
     storage = globalThis.localStorage,
     onItemSynced = () => {},
     // False when someone else is signed in now: this queue is left untouched.
-    isCurrentUser = () => true
+    isCurrentUser = () => true,
+    timeoutMs = SYNC_WRITE_TIMEOUT_MS
   } = {}
 ) {
   if (running.has(uid)) {
@@ -106,7 +131,10 @@ export function syncPending(
       }
 
       try {
-        await write(item.id, item.log, item);
+        await withTimeout(
+          Promise.resolve().then(() => write(item.id, item.log, item)),
+          timeoutMs
+        );
 
         removePending(uid, item.id, storage);
         synced += 1;

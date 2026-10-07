@@ -27,6 +27,8 @@ const SHELL = [
   "workoutPlanEditor.js",
   "logWorkout.js",
   "pendingWorkouts.js",
+  "workoutLogStatus.js",
+  "historyView.js",
   "history.js",
   "progress.js",
   "progressMetrics.js",

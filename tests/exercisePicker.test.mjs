@@ -152,7 +152,7 @@ test("a legacy free-text exercise is linked ONLY by an explicit selection", asyn
   assert.equal(applyLibrarySelection(legacy(), hack).libraryExerciseId, "hack-squat");
 });
 
-test("re-selecting a different library exercise keeps the same slot id", async () => {
+test("re-selecting a DIFFERENT library exercise gives a NEW slot id and keeps the prescription", async () => {
   const legPress = await library.getExercise("leg-press");
   const hackSquat = await library.getExercise("hack-squat");
 
@@ -162,9 +162,11 @@ test("re-selecting a different library exercise keeps the same slot id", async (
   assert.equal(first.libraryExerciseId, "leg-press");
   assert.equal(second.libraryExerciseId, "hack-squat");
   assert.equal(second.name, "Machine Hack Squat");
-  assert.equal(first.id, "slot-uuid-1111");
-  assert.equal(second.id, "slot-uuid-1111");
+  assert.equal(first.id, "slot-uuid-1111", "legacy -> library keeps the slot");
+  assert.notEqual(second.id, "slot-uuid-1111", "library A -> library B is a new exercise");
   assert.equal(second.notes, "pause at the bottom");
+  assert.equal(second.sets, 3);
+  assert.equal(second.restSeconds, 120);
 });
 
 test("selection rejects invalid arguments with a clear error", async () => {

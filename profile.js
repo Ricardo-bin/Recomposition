@@ -911,3 +911,17 @@ const currentUser = auth.currentUser;
 window.RecompositionProfile = {
   render: renderProfile
 };
+
+
+// ============================================================================
+// SIGN-OUT: drop the previous user's screen
+// ============================================================================
+
+window.addEventListener("recomposition-signed-out", () => {
+  const container = document.getElementById("settings-profile-content");
+
+  if (container) {
+    container.innerHTML = "";
+  }
+});
+

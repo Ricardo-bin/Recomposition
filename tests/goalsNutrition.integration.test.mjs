@@ -15,6 +15,7 @@ import * as units from "../units.js";
 import * as engine from "../nutritionEngine.js";
 import * as currentWeight from "../currentWeight.js";
 import * as activeGoal from "../activeGoal.js";
+import * as logStatus from "../workoutLogStatus.js";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 
 const JSDOM = await loadJSDOM();
@@ -592,6 +593,8 @@ async function openDashboard(goals) {
     getWorkoutLogs: async () => [],
     getWeightHistory: async () => WEIGHTS,
     getGoals: async () => goals,
+    findActiveGoal: activeGoal.findActiveGoal,
+    isCompletedLog: logStatus.isCompletedLog,
     ...Object.fromEntries(Object.keys(units).map(k => [k, units[k]])),
     ...Object.fromEntries(Object.keys(currentWeight).map(k => [k, currentWeight[k]]))
   };
@@ -758,13 +761,12 @@ test("overlapping goals: the one that started most recently is current", { skip 
   assert.equal(t.document.querySelector("[data-current-goal]").closest(".goal-card").dataset.goalId, "newer");
 });
 
-test("Goals uses the SAME current-goal rule as the Dashboard", () => {
+test("Goals uses the SAME current-goal rule as the Dashboard (one shared implementation)", () => {
   const dashboard = read("dashboard.js");
-  const match = dashboard.match(/function findActiveGoal\(goals\) \{[\s\S]*?\n\}/);
 
-  assert.ok(match, "dashboard findActiveGoal still exists");
-
-  const dashboardRule = new Function("dateKey", `${match[0]}; return findActiveGoal;`)(() => "2026-10-06");
+  assert.doesNotMatch(dashboard, /function findActiveGoal\s*\(/, "the Dashboard has no copy of its own");
+  assert.match(dashboard, /import\s*\{\s*findActiveGoal\s*\}\s*from\s*"\.\/activeGoal\.js"/);
+  assert.match(read("goals.js"), /findActiveGoal/);
 
   const goals = [
     { id: "a", startDate: "2026-01-01", endDate: "2026-12-31" },
@@ -774,11 +776,17 @@ test("Goals uses the SAME current-goal rule as the Dashboard", () => {
     { id: "e", startDate: "2025-01-01", endDate: "2025-12-31" }
   ];
 
-  for (const subset of [goals, goals.slice(0, 1), goals.slice(2), goals.slice(3), goals.slice(4), []]) {
-    assert.equal(
-      activeGoal.findActiveGoal(subset, "2026-10-06")?.id ?? null,
-      dashboardRule(subset)?.id ?? null
-    );
+  const expected = new Map([
+    [goals, "b"],
+    [goals.slice(0, 1), "a"],
+    [goals.slice(2), "c"],
+    [goals.slice(3), null],
+    [goals.slice(4), null],
+    [[], null]
+  ]);
+
+  for (const [subset, id] of expected) {
+    assert.equal(activeGoal.findActiveGoal(subset, "2026-10-06")?.id ?? null, id);
   }
 });
 

@@ -446,7 +446,7 @@ test("typing text equal to a library name does NOT relink; re-selecting does", {
   assert.equal(exercise.id, "slot-1");
 });
 
-test("re-selecting a DIFFERENT library exercise keeps the slot id (Leg Press -> Hack Squat)", { skip }, async () => {
+test("re-selecting a DIFFERENT library exercise gets a NEW slot id, prescription kept (Leg Press -> Hack Squat)", { skip }, async () => {
   const t = await boot({
     plans: [makePlan([legacyExercise(1, { name: "Leg Press", libraryExerciseId: "leg-press" })])]
   });
@@ -462,7 +462,8 @@ test("re-selecting a DIFFERENT library exercise keeps the slot id (Leg Press -> 
 
   assert.equal(exercise.libraryExerciseId, "hack-squat");
   assert.equal(exercise.name, "Machine Hack Squat");
-  assert.equal(exercise.id, "slot-1");
+  assert.notEqual(exercise.id, "slot-1");
+  assert.ok(exercise.id && exercise.id.length > 8, "a fresh UUID");
   assert.equal(exercise.restSeconds, 120);
 });
 

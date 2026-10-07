@@ -20,6 +20,8 @@ import {
 
 import { db, auth } from "../firebase.js";
 
+import { isCompletedLog } from "../workoutLogStatus.js";
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Authentication
@@ -349,7 +351,7 @@ export async function getPreviousWorkoutLog(
 }
 
 
-function findPreviousLogs(
+export function findPreviousLogs(
   logs,
   planId,
   exerciseId,
@@ -361,7 +363,7 @@ function findPreviousLogs(
       return false;
     }
 
-    if (log.status && log.status !== "completed") {
+    if (!isCompletedLog(log)) {
       return false;
     }
 
