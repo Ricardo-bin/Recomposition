@@ -13,6 +13,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 import * as alternativeToday from "../alternativeToday.js";
+import * as pendingWorkouts from "../pendingWorkouts.js";
 
 const JSDOM = await loadJSDOM();
 const skip = JSDOM ? false : SKIP_MESSAGE;
@@ -67,13 +68,16 @@ function boot(world, uid = "userA") {
 
   const stubs = {
     ...alternativeToday,
+    ...pendingWorkouts,
     getWorkoutPlan: async id => PLANS[id] ?? null,
     getPreviousWorkoutLog: async () => null,
     getWorkoutLogs: async () => world.logs.slice(),
-    createWorkoutLog: async log => {
-      world.creates += 1;
-      world.logs.push({ ...log, id: `L${world.creates}`, date: { toMillis: () => log.date.getTime() } });
-      return `L${world.creates}`;
+    saveWorkoutLogOnce: async (_uid, id, log) => {
+      const doc = { ...log, id, date: { toMillis: () => log.date.getTime() } };
+      const at = world.logs.findIndex(l => l.id === id);
+      if (at >= 0) world.logs[at] = doc;
+      else { world.creates += 1; world.logs.push(doc); }
+      return id;
     },
     getAuthenticatedUserId: () => {
       if (!auth.currentUser) throw new Error("no user");

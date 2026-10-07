@@ -6,9 +6,17 @@ import {
   getWorkoutPlan,
   getPreviousWorkoutLog,
   getWorkoutLogs,
-  createWorkoutLog,
+  saveWorkoutLogOnce,
   getAuthenticatedUserId
 } from "./data/recompositionData.js";
+
+import {
+  createSyncId,
+  enqueuePending,
+  isPending,
+  readPending,
+  syncPending
+} from "./pendingWorkouts.js";
 
 import { auth } from "./firebase.js";
 
@@ -191,6 +199,10 @@ function createWorkoutSession(plan) {
 
   return {
 
+    // One stable id per workout: becomes the Firestore log document id, so
+    // any retry of the same workout can never create a second log.
+    syncId: createSyncId(),
+
     planId: plan.id,
 
     workoutName:
@@ -278,18 +290,37 @@ async function loadPreviousPerformance() {
 
 // Previous performance follows what is actually performed: a replaced
 // exercise only ever shows earlier sessions of that same replacement.
+const PREVIOUS_LOOKUP_TIMEOUT_MS = 4000;
+
 async function loadPreviousForExercise(exercise) {
 
   try {
 
-    exercise.previousLog =
-      await getPreviousWorkoutLog(
-        currentWorkoutSession.planId,
-        getPerformedExerciseId(
-          exercise
-        ),
-        currentWorkoutSession.date
-      );
+    // Offline (or a hanging request) must never hold up the workout screen.
+    if (globalThis.navigator?.onLine === false) {
+      exercise.previousLog = null;
+      return;
+    }
+
+    let timer;
+
+    try {
+      exercise.previousLog =
+        await Promise.race([
+          getPreviousWorkoutLog(
+            currentWorkoutSession.planId,
+            getPerformedExerciseId(
+              exercise
+            ),
+            currentWorkoutSession.date
+          ),
+          new Promise(resolve => {
+            timer = setTimeout(() => resolve(null), PREVIOUS_LOOKUP_TIMEOUT_MS);
+          })
+        ]);
+    } finally {
+      clearTimeout(timer);
+    }
 
   } catch (error) {
 
@@ -1425,16 +1456,22 @@ let alternativeSheet = null;
 // Loaded on demand: the library and picker are only needed when the sheet opens.
 async function loadAlternativePicker() {
 
-  const [pickerUi, library] =
+  const [pickerUi, library, smart, pickerHelpers] =
     await Promise.all([
       import("./exercisePickerUI.js"),
-      import("./data/exerciseLibrary.js")
+      import("./data/exerciseLibrary.js"),
+      import("./smartAlternatives.js"),
+      import("./exercisePicker.js")
     ]);
 
   return {
     attachExercisePicker:
       pickerUi.attachExercisePicker,
-    library
+    library,
+    rankAlternatives:
+      smart.rankAlternatives,
+    formatExerciseSubtitle:
+      pickerHelpers.formatExerciseSubtitle
   };
 }
 
@@ -1444,7 +1481,7 @@ function closeAlternativeSheet() {
     return;
   }
 
-  const { root, controller, onKeyDown, opener } =
+  const { root, controller, onKeyDown, opener, unfit } =
     alternativeSheet;
 
   alternativeSheet = null;
@@ -1454,6 +1491,8 @@ function closeAlternativeSheet() {
     onKeyDown,
     true
   );
+
+  unfit?.();
 
   try {
     controller?.destroy();
@@ -1633,6 +1672,7 @@ async function openAlternativeSheet(
       role="dialog"
       aria-modal="true"
       aria-labelledby="alt-sheet-title"
+      tabindex="-1"
     >
 
       <div class="alt-sheet-header">
@@ -1664,7 +1704,37 @@ async function openAlternativeSheet(
         The replacement applies to TODAY ONLY.
       </p>
 
-      <div data-alt-picker-host>
+      <div class="alt-recommended" data-alt-recommended hidden>
+
+        <div class="alt-recommended-label">
+          RECOMMENDED
+        </div>
+
+        <ul
+          class="alt-recommended-list"
+          data-alt-recommended-list
+        ></ul>
+
+        <button
+          type="button"
+          class="workout-small-button alt-view-all"
+          data-alt-view-all
+        >
+          VIEW ALL EXERCISES
+        </button>
+
+      </div>
+
+      <button
+        type="button"
+        class="workout-small-button alt-back"
+        data-alt-back
+        hidden
+      >
+        ← RECOMMENDED
+      </button>
+
+      <div class="alt-picker-host" data-alt-picker-host>
 
         <div class="exercise-picker">
 
@@ -1674,14 +1744,14 @@ async function openAlternativeSheet(
             data-exercise-index="0"
             data-field="name"
             role="combobox"
-            aria-label="Search the exercise library"
+            aria-label="Search exercises"
             aria-expanded="false"
             aria-autocomplete="list"
             autocomplete="off"
             autocapitalize="off"
             spellcheck="false"
             enterkeyhint="search"
-            placeholder="Search the exercise library"
+            placeholder="Search exercises..."
           >
 
           <ul
@@ -1817,11 +1887,6 @@ async function openAlternativeSheet(
       return;
     }
 
-    // First Escape closes an open results list; the next one closes the sheet.
-    if (root.querySelector(".exercise-picker-list.is-open")) {
-      return;
-    }
-
     event.preventDefault();
 
     closeAlternativeSheet();
@@ -1829,9 +1894,28 @@ async function openAlternativeSheet(
 
   document.body.appendChild(root);
 
+  // Keep the sheet inside the VISIBLE area: when the phone keyboard opens the
+  // visual viewport shrinks, and the list scrolls inside what is left.
+  const viewport = window.visualViewport;
+
+  const fit = () => {
+    root.style.setProperty(
+      "--alt-vv-height",
+      `${Math.max(240, viewport.height - 24)}px`
+    );
+  };
+
+  if (viewport) {
+    fit();
+    viewport.addEventListener("resize", fit);
+  }
+
   alternativeSheet = {
     root,
     controller: null,
+    unfit: viewport
+      ? () => viewport.removeEventListener("resize", fit)
+      : null,
     onKeyDown,
     opener:
       document.querySelector(
@@ -1892,6 +1976,84 @@ async function openAlternativeSheet(
     return;
   }
 
+  // ---- choosing (shared by recommended rows and the full list) -------------
+
+  const choose = libraryExercise => {
+
+    const check =
+      validateReplacement(
+        currentWorkoutSession,
+        exerciseIndex,
+        libraryExercise
+      );
+
+    if (!check.ok) {
+
+      pending = null;
+
+      part("[data-alt-confirm]")
+        .disabled = true;
+
+      setSummary("", "");
+      setText("[data-alt-error]", check.message);
+
+      return;
+    }
+
+    pending = libraryExercise;
+
+    setText("[data-alt-error]", "");
+
+    const current =
+      currentWorkoutSession
+        ?.exercises[exerciseIndex];
+
+    const warning =
+      hasEnteredData(current)
+        ? ` Sets already entered for ${current.name} will be cleared.`
+        : "";
+
+    setSummary(
+      plannedName,
+      libraryExercise.name,
+      warning.trim()
+    );
+
+    part("[data-alt-confirm]")
+      .disabled = false;
+  };
+
+  const markRecommended = id => {
+
+    root
+      .querySelectorAll(".alt-recommended-option")
+      .forEach(option =>
+        option.classList.toggle(
+          "is-selected",
+          option.dataset.exerciseId === id
+        )
+      );
+  };
+
+  // ---- recommended / all modes ---------------------------------------------
+
+  let hasRecommended = false;
+
+  const setMode = mode => {
+
+    const all =
+      mode === "all" || !hasRecommended;
+
+    root.classList.toggle("alt-sheet--all", all);
+    root.querySelector(".alt-sheet")?.classList.toggle("alt-sheet--all", all);
+
+    part("[data-alt-recommended]")
+      .hidden = all || !hasRecommended;
+
+    part("[data-alt-back]")
+      .hidden = !(all && hasRecommended);
+  };
+
   alternativeSheet.controller =
     deps.attachExercisePicker(
       part("[data-alt-picker-host]"),
@@ -1900,6 +2062,9 @@ async function openAlternativeSheet(
 
         // Library exercises only: no custom row.
         allowCustom: false,
+
+        // The list stays open, shows the whole library and scrolls inside.
+        pinned: true,
 
         // The picker reads this to fill the input and the status line.
         getExercise: () =>
@@ -1912,57 +2077,24 @@ async function openAlternativeSheet(
             : { id: "alternative-today", name: input.value },
 
         // Typing again discards any earlier choice.
-        onNameInput: () => clearPending(),
+        onNameInput: () => {
+          clearPending();
+          markRecommended(null);
+        },
 
         onSelect: (index, libraryExercise) => {
-
-          const check =
-            validateReplacement(
-              currentWorkoutSession,
-              exerciseIndex,
-              libraryExercise
-            );
-
-          if (!check.ok) {
-
-            pending = null;
-
-            part("[data-alt-confirm]")
-              .disabled = true;
-
-            setSummary("", "");
-            setText("[data-alt-error]", check.message);
-
-            return;
-          }
-
-          pending = libraryExercise;
-
-          setText("[data-alt-error]", "");
-
-          const current =
-            currentWorkoutSession
-              ?.exercises[exerciseIndex];
-
-          const warning =
-            hasEnteredData(current)
-              ? ` Sets already entered for ${current.name} will be cleared.`
-              : "";
-
-          setSummary(
-            plannedName,
-            libraryExercise.name,
-            warning.trim()
-          );
-
-          part("[data-alt-confirm]")
-            .disabled = false;
+          markRecommended(null);
+          choose(libraryExercise);
         },
 
         // Not reachable (allowCustom is false); kept so the picker contract holds.
         onChooseCustom: () => {},
 
         onResults: (query, count) => {
+
+          if (query || count > 0) {
+            setMode("all");
+          }
 
           setText(
             "[data-alt-hint]",
@@ -1973,6 +2105,161 @@ async function openAlternativeSheet(
         }
       }
     );
+
+  // ---- smart recommendations (library metadata only) -----------------------
+
+  let allExercises = [];
+
+  try {
+
+    if (typeof deps.library.getAllExercises === "function") {
+
+      allExercises =
+        await deps.library.getAllExercises();
+
+      const plannedId =
+        alternative
+          ? alternative.original.libraryExerciseId
+          : exercise.libraryExerciseId;
+
+      let original = null;
+
+      if (plannedId) {
+        original =
+          await deps.library.getExercise(plannedId);
+      }
+
+      // Unlinked (custom) plan exercise: an EXACT library name/alias match is
+      // used for ranking only. Nothing is linked or saved.
+      if (
+        !original &&
+        typeof deps.library.findExerciseByName === "function"
+      ) {
+        original =
+          await deps.library.findExerciseByName(plannedName);
+      }
+
+      if (original) {
+
+        const ranked =
+          deps.rankAlternatives(
+            original,
+            allExercises,
+            {
+              limit: 0,
+              excludeIds: alternative
+                ? [alternative.libraryExerciseId]
+                : []
+            }
+          );
+
+        const usable =
+          ranked
+            .filter(candidate =>
+              validateReplacement(
+                currentWorkoutSession,
+                exerciseIndex,
+                candidate
+              ).ok
+            )
+            .slice(0, 5);
+
+        const list =
+          part("[data-alt-recommended-list]");
+
+        usable.forEach(candidate => {
+
+          const item =
+            document.createElement("li");
+
+          const button =
+            document.createElement("button");
+
+          button.type = "button";
+          button.className =
+            "alt-recommended-option";
+          button.dataset.exerciseId =
+            candidate.id;
+
+          const name =
+            document.createElement("span");
+
+          name.className =
+            "exercise-picker-option-name";
+          name.textContent =
+            candidate.name;
+
+          const sub =
+            document.createElement("span");
+
+          sub.className =
+            "exercise-picker-option-sub";
+          sub.textContent =
+            deps.formatExerciseSubtitle(candidate);
+
+          button.append(name, sub);
+
+          button.addEventListener(
+            "click",
+            () => {
+              clearPending();
+              markRecommended(candidate.id);
+              choose(candidate);
+            }
+          );
+
+          item.append(button);
+          list.append(item);
+        });
+
+        hasRecommended = usable.length > 0;
+      }
+    }
+
+  } catch (error) {
+
+    // Recommendations are optional: the full list still works.
+    console.error(
+      "Could not build recommendations:",
+      error
+    );
+
+    hasRecommended = false;
+  }
+
+  // The sheet may have been closed while recommendations were computed.
+  if (alternativeSheet?.root !== root) {
+    return;
+  }
+
+  part("[data-alt-view-all]")
+    .addEventListener(
+      "click",
+      () => {
+        setMode("all");
+        alternativeSheet?.controller?.openAll();
+      }
+    );
+
+  part("[data-alt-back]")
+    .addEventListener(
+      "click",
+      () => {
+        input.value = "";
+        clearPending();
+        markRecommended(null);
+        setText("[data-alt-hint]", "");
+        alternativeSheet?.controller?.closeAll();
+        setMode("recommended");
+      }
+    );
+
+  setMode("recommended");
+
+  // Without recommendations the full library is shown straight away.
+  if (!hasRecommended) {
+    alternativeSheet.controller.openAll();
+  }
 
   part("[data-alt-confirm]")
     .addEventListener(
@@ -2013,7 +2300,9 @@ async function openAlternativeSheet(
       }
     );
 
-  input.focus();
+  // Focus the dialog, not the search box: the phone keyboard stays closed
+  // until the user chooses to search.
+  part(".alt-sheet").focus?.();
 }
 
 
@@ -2088,9 +2377,12 @@ function closeWorkoutSession({ keepStored = false } = {}) {
 // COMPLETE WORKOUT
 // ============================================================================
 
+let completionInFlight = false;
+
 async function handleCompleteWorkout() {
 
-  if (!currentWorkoutSession) {
+  // A double tap (or a second trigger) must not complete the workout twice.
+  if (!currentWorkoutSession || completionInFlight) {
     return;
   }
 
@@ -2115,53 +2407,63 @@ async function handleCompleteWorkout() {
     );
 
 
+  completionInFlight = true;
+
   try {
 
     if (completeButton) {
 
       completeButton.disabled =
         true;
-
-      completeButton.textContent =
-        "Saving...";
     }
 
+    const uid =
+      getAuthenticatedUserId();
 
-        currentWorkoutSession.status =
+    if (!currentWorkoutSession.syncId) {
+      currentWorkoutSession.syncId = createSyncId();
+    }
+
+    currentWorkoutSession.status =
       "completed";
 
-    // Flag the stored copy: if the page is refreshed while saving, the
-    // restore step checks Firestore before offering the session again.
-    persistActiveSession({ completing: true });
+    const syncId =
+      currentWorkoutSession.syncId;
 
-
-
-        const logId =
-      await createWorkoutLog(
+    // 1. Save the finished workout ON THIS DEVICE first. If this throws, the
+    //    session below is untouched and the user can simply try again.
+    const log =
+      toStorableLog(
         buildLogSession(
           currentWorkoutSession
         )
       );
 
-    // The log now exists: drop the temporary session immediately.
+    enqueuePending(uid, syncId, log, localStorage);
+
+    // 2. The queue now owns the workout; the temporary session can go.
     clearActiveSession();
-
-
-
-
-    window.dispatchEvent(
-      new CustomEvent("recomposition-workout-updated", {
-        detail: { logId }
-      })
-    );
 
     closeWorkoutSession();
 
+    // 3. Sync in the background. The UI is never blocked on the network.
+    const online =
+      globalThis.navigator?.onLine !== false;
 
-    window.alert(
-      "Workout completed and saved."
+    showSyncStatus(
+      online
+        ? "SYNCING"
+        : "OFFLINE — SAVING LOCALLY",
+      {
+        detail: online
+          ? ""
+          : SAVED_LOCALLY_MESSAGE
+      }
     );
 
+    if (online) {
+      syncPendingWorkouts({ announce: true });
+    }
 
   } catch (error) {
 
@@ -2170,8 +2472,7 @@ async function handleCompleteWorkout() {
       error
     );
 
-
-        window.alert(
+    window.alert(
       "Could not save the workout. Please try again."
     );
 
@@ -2181,20 +2482,220 @@ async function handleCompleteWorkout() {
       persistActiveSession();
     }
 
-
-
     if (completeButton) {
 
       completeButton.disabled =
         false;
-
-      completeButton.textContent =
-        "Complete Workout";
     }
 
+  } finally {
+
+    completionInFlight = false;
   }
 
 }
+
+
+// ============================================================================
+// PENDING WORKOUT SYNC + STATUS
+// ----------------------------------------------------------------------------
+// Completed workouts wait in a local queue (pendingWorkouts.js) until Firestore
+// confirms them. Failures keep them queued and are retried later; the log
+// document id is the workout's syncId, so a retry can never duplicate a log.
+// ============================================================================
+
+const SAVED_LOCALLY_MESSAGE =
+  "Workout saved on this device. It will sync when you're back online.";
+
+const SYNC_RETRY_MS = 30000;
+
+let syncRetryTimer = null;
+let statusHideTimer = null;
+
+// Plain JSON (no previous-performance data, dates as ISO strings).
+function toStorableLog(log) {
+  const copy = JSON.parse(JSON.stringify(log));
+
+  if (Array.isArray(copy.exercises)) {
+    copy.exercises = copy.exercises.map(
+      ({ previousLog, ...exercise }) => exercise
+    );
+  }
+
+  copy.createdAt = new Date().toISOString();
+
+  return copy;
+}
+
+function writePendingLog(uid, syncId, log) {
+  return saveWorkoutLogOnce(uid, syncId, {
+    ...log,
+    date: new Date(log.date),
+    createdAt: new Date(log.createdAt)
+  });
+}
+
+function getStatusElement() {
+  let element = document.getElementById("sync-status");
+
+  if (!element && document.body) {
+    element = document.createElement("div");
+    element.id = "sync-status";
+    element.className = "sync-status";
+    element.setAttribute("role", "status");
+    element.setAttribute("aria-live", "polite");
+    element.hidden = true;
+    document.body.appendChild(element);
+  }
+
+  return element;
+}
+
+function showSyncStatus(label, { detail = "", hideAfterMs = 0 } = {}) {
+  const element = getStatusElement();
+
+  if (!element) {
+    return;
+  }
+
+  clearTimeout(statusHideTimer);
+
+  element.innerHTML = "";
+
+  const strong = document.createElement("strong");
+  strong.textContent = label;
+  element.appendChild(strong);
+
+  if (detail) {
+    const text = document.createElement("span");
+    text.textContent = detail;
+    element.appendChild(text);
+  }
+
+  element.dataset.state =
+    label.startsWith("OFFLINE") ? "offline"
+      : label === "SYNCING" ? "syncing"
+        : "saved";
+
+  element.hidden = false;
+
+  if (hideAfterMs) {
+    statusHideTimer = setTimeout(hideSyncStatus, hideAfterMs);
+  }
+}
+
+function hideSyncStatus() {
+  const element = document.getElementById("sync-status");
+
+  if (element) {
+    element.hidden = true;
+  }
+}
+
+function safeUserId() {
+  try {
+    return getAuthenticatedUserId();
+  } catch (error) {
+    return null;
+  }
+}
+
+function hasPendingWorkouts() {
+  const uid = safeUserId();
+
+  return Boolean(uid) && readPending(uid, localStorage).length > 0;
+}
+
+// Shows the quiet connectivity indicator only when it matters.
+function refreshConnectivityStatus() {
+  const offline = globalThis.navigator?.onLine === false;
+
+  if (offline && (currentWorkoutSession || hasPendingWorkouts())) {
+    showSyncStatus("OFFLINE — SAVING LOCALLY", {
+      detail: hasPendingWorkouts() ? SAVED_LOCALLY_MESSAGE : ""
+    });
+    return;
+  }
+
+  if (!offline && !hasPendingWorkouts()) {
+    hideSyncStatus();
+  }
+}
+
+async function syncPendingWorkouts({ announce = false } = {}) {
+  const uid = safeUserId();
+
+  if (!uid || readPending(uid, localStorage).length === 0) {
+    return null;
+  }
+
+  if (globalThis.navigator?.onLine === false) {
+    refreshConnectivityStatus();
+    return null;
+  }
+
+  showSyncStatus("SYNCING");
+
+  const result = await syncPending(
+    uid,
+    (syncId, log) => writePendingLog(uid, syncId, log),
+    {
+    storage: localStorage,
+    isCurrentUser: () => safeUserId() === uid,
+    onItemSynced: item => {
+      window.dispatchEvent(
+        new CustomEvent("recomposition-workout-updated", {
+          detail: { logId: item.id }
+        })
+      );
+    }
+    }
+  );
+
+  // The account changed mid-sync: that queue was left untouched, and the
+  // sync for the account now signed in is started by its own sign-in.
+  if (result.skipped) {
+    refreshConnectivityStatus();
+    return result;
+  }
+
+  clearTimeout(syncRetryTimer);
+
+  if (result.remaining > 0) {
+    // Keep the workout; try again later. Never reported as cloud-saved.
+    showSyncStatus(
+      globalThis.navigator?.onLine === false
+        ? "OFFLINE — SAVING LOCALLY"
+        : "SYNC PENDING",
+      {
+        detail: SAVED_LOCALLY_MESSAGE
+      }
+    );
+
+    syncRetryTimer = setTimeout(
+      () => syncPendingWorkouts(),
+      SYNC_RETRY_MS
+    );
+  } else if (result.synced > 0) {
+    showSyncStatus("SAVED", {
+      detail: "Workout saved to your account.",
+      hideAfterMs: 4000
+    });
+  } else {
+    refreshConnectivityStatus();
+  }
+
+  return result;
+}
+
+window.addEventListener("online", () => syncPendingWorkouts());
+window.addEventListener("offline", refreshConnectivityStatus);
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    syncPendingWorkouts();
+  }
+});
 
 
 // ============================================================================
@@ -2391,6 +2892,13 @@ async function restoreActiveSession(uid) {
     })
   );
 
+  // Finished on this device already (waiting in the sync queue): never offer
+  // it again as an unfinished session.
+  if (session.syncId && isPending(uid, session.syncId, localStorage)) {
+    clearActiveSession(uid);
+    return;
+  }
+
   // The page was refreshed WHILE the workout was being saved.
   // If that log reached Firestore, do not offer the session again.
   if (completing) {
@@ -2438,6 +2946,10 @@ onAuthStateChanged(auth, async user => {
   }
 
   await restoreActiveSession(user.uid);
+
+  // Workouts finished earlier (possibly offline) that never reached Firestore.
+  syncPendingWorkouts();
+  refreshConnectivityStatus();
 });
 
 

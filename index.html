@@ -9,6 +9,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/pwa/apple-touch-icon.png">
+
   <title>Recomposition</title>
 
   <script>
@@ -633,5 +636,13 @@
   });
 </script>
 
+  <script>
+    // Installable app shell (offline start). Failure never affects the app.
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("sw.js").catch(function () {});
+      });
+    }
+  </script>
 </body>
 </html>

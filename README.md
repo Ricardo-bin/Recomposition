@@ -258,7 +258,7 @@ Not implemented (future): target weight / target rate fields and any adjustment 
 
 **## Exercise Library**
 
-A curated, read-only library ships with the app as \`data/exercise-library.v1.json\` (25 exercises in v1). Always
+A curated, read-only library ships with the app as \`data/exercise-library.v1.json\` (120 exercises, library version 1.1.0). Always
 
 use \`data/exerciseLibrary.js\` (search by name or alias, lookup by id, indexes by muscle, movement pattern and
 
@@ -415,3 +415,17 @@ assets/themes/linkin-park/
 ```
 
 Do not change component code when replacing artwork; the centralized registry is designed so the files can be replaced independently of application/business logic.
+
+
+## Offline workouts and PWA
+
+- A finished workout is saved on the device first (`pendingWorkouts.js`, localStorage key
+  `recomposition.pendingWorkouts.v1.<uid>`), then synced to Firestore. It leaves the queue only after Firestore
+  confirms the write.
+- Each workout has one stable `syncId` (created when the session starts). It is the `workoutLogs` document id and is
+  written with `setDoc`, so any retry overwrites the same document and never creates a second log.
+- Sync runs after sign-in, on the browser `online` event, when the tab becomes visible and every 30 s while items
+  are pending. Failures keep the workout queued.
+- `sw.js` caches the static app shell and the pinned Firebase SDK code only. Firestore/Auth requests are never
+  intercepted. Bump `CACHE_VERSION` in `sw.js` to ship a new shell.
+- Starting a NEW workout still needs a connection to load the plan; an already open or reloaded session works offline.

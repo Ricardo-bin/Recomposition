@@ -36,6 +36,9 @@ function makeLibrary(transform = lib => lib) {
 
 const ids = list => list.map(exercise => exercise.id);
 
+// Expected ids computed from the raw JSON (library order).
+const rawIdsWhere = predicate => readRaw().exercises.filter(predicate).map(e => e.id);
+
 
 // ----------------------------------------------------------------------------
 // LOADING
@@ -47,12 +50,12 @@ test("library loads successfully", async () => {
   const info = await library.loadExerciseLibrary();
 
   assert.equal(info.schemaVersion, 1);
-  assert.equal(info.libraryVersion, "1.0.0");
-  assert.equal(info.exerciseCount, 25);
+  assert.equal(info.libraryVersion, "1.1.0");
+  assert.equal(info.exerciseCount, 120);
 
   const all = await library.getAllExercises();
 
-  assert.equal(all.length, 25);
+  assert.equal(all.length, 120);
 });
 
 test("repeated loads use the cache (loader runs once)", async () => {
@@ -141,7 +144,7 @@ test("default instance loads through fetch() (browser path)", async () => {
 
     const exercise = await fresh.getExercise("hack-squat");
 
-    assert.equal(exercise.name, "Hack Squat");
+    assert.equal(exercise.name, "Machine Hack Squat");
     assert.equal(requested.length, 1);
     assert.ok(requested[0].endsWith("/data/exercise-library.v1.json"));
 
@@ -164,7 +167,7 @@ test("get exercise by id", async () => {
   const squat = await library.getExercise("barbell-back-squat");
 
   assert.equal(squat.id, "barbell-back-squat");
-  assert.equal(squat.name, "Barbell Back Squat");
+  assert.equal(squat.name, "Barbell High-Bar Back Squat");
   assert.equal(squat.movementPattern, "squat");
   assert.deepEqual(squat.primaryMuscles, ["quadriceps", "glutes"]);
   assert.equal(squat.laterality, "bilateral");
@@ -309,14 +312,20 @@ test("muscle lookup (primary, secondary, any)", async () => {
 
   assert.deepEqual(
     lats.sort(),
-    ["barbell-bent-over-row", "lat-pulldown", "pull-up", "seated-cable-row"]
+    rawIdsWhere(e => e.primaryMuscles.includes("lats")).sort()
   );
+
+  // The original lat exercises are still there.
+  for (const id of ["barbell-bent-over-row", "lat-pulldown", "pull-up", "seated-cable-row"]) {
+    assert.ok(lats.includes(id), id);
+  }
 
   const secondaryLats = ids(
     await library.getExercisesByMuscle("lats", { role: "secondary" })
   );
 
-  assert.deepEqual(secondaryLats, ["conventional-deadlift"]);
+  assert.deepEqual(secondaryLats, rawIdsWhere(e => e.secondaryMuscles.includes("lats")));
+  assert.ok(secondaryLats.includes("conventional-deadlift"));
 
   const anyLats = ids(
     await library.getExercisesByMuscle("lats", { role: "any" })
@@ -327,7 +336,7 @@ test("muscle lookup (primary, secondary, any)", async () => {
 
   assert.deepEqual(
     ids(await library.getExercisesByMuscle("calves")),
-    ["standing-calf-raise"]
+    rawIdsWhere(e => e.primaryMuscles.includes("calves"))
   );
 });
 
@@ -343,17 +352,17 @@ test("movement-pattern lookup", async () => {
 
   assert.deepEqual(
     ids(await library.getExercisesByMovementPattern("squat")).sort(),
-    ["barbell-back-squat", "hack-squat", "leg-press"]
+    rawIdsWhere(e => e.movementPattern === "squat").sort()
   );
 
   assert.deepEqual(
     ids(await library.getExercisesByMovementPattern("vertical-pull")).sort(),
-    ["lat-pulldown", "pull-up"]
+    rawIdsWhere(e => e.movementPattern === "vertical-pull").sort()
   );
 
   assert.deepEqual(
     ids(await library.getExercisesByMovementPattern("knee-extension")),
-    ["leg-extension"]
+    ["leg-extension", "bodyweight-sissy-squat"].sort((a, b) => rawIdsWhere(e => true).indexOf(a) - rawIdsWhere(e => true).indexOf(b))
   );
 
   assert.deepEqual(await library.getExercisesByMovementPattern("carry"), []);
@@ -364,28 +373,28 @@ test("equipment lookup (exercises that require a piece of equipment)", async () 
 
   assert.deepEqual(
     ids(await library.getExercisesByEquipment("dip-bars")),
-    ["parallel-bar-dip"]
+    ["parallel-bar-dip", "weighted-triceps-dips"]
   );
 
   const squatRack = ids(await library.getExercisesByEquipment("squat-rack"));
 
-  assert.deepEqual(squatRack.sort(), ["barbell-back-squat", "barbell-bench-press"]);
+  assert.deepEqual(squatRack.sort(), rawIdsWhere(e => e.equipment.includes("squat-rack")).sort());
+  assert.ok(squatRack.includes("barbell-back-squat") && squatRack.includes("barbell-bench-press"));
 
   const cable = ids(await library.getExercisesByEquipment("cable-machine"));
 
   // Lat Pulldown has resistanceType "cable" but needs its own station
   // (lat-pulldown-machine), so it is deliberately NOT in this list.
-  assert.deepEqual(cable.sort(), [
-    "cable-chest-fly",
-    "cable-crunch",
-    "cable-triceps-pushdown",
-    "face-pull",
-    "seated-cable-row"
-  ]);
+  assert.deepEqual(cable.sort(), rawIdsWhere(e => e.equipment.includes("cable-machine")).sort());
+
+  for (const id of ["cable-chest-fly", "cable-crunch", "cable-triceps-pushdown", "face-pull", "seated-cable-row"]) {
+    assert.ok(cable.includes(id), id);
+  }
+  assert.ok(!cable.includes("lat-pulldown"));
 
   assert.deepEqual(
     ids(await library.getExercisesByEquipment("lat-pulldown-machine")),
-    ["lat-pulldown"]
+    ["neutral-grip-lat-pulldown", "lat-pulldown"].sort((a, b) => rawIdsWhere(e => true).indexOf(a) - rawIdsWhere(e => true).indexOf(b))
   );
 
   assert.deepEqual(await library.getExercisesByEquipment("jetpack"), []);
@@ -397,7 +406,7 @@ test("equipment availability honours equipmentSatisfiedBy (adjustable bench ⊇ 
   const full = await library.getVocabularies();
   const everything = await library.getExercisesAvailableWith(full.equipment);
 
-  assert.equal(everything.length, 25);
+  assert.equal(everything.length, 120);
 
   const dumbbellsAndAdjustableBench = ids(
     await library.getExercisesAvailableWith(["dumbbell", "adjustable-bench"])
@@ -415,9 +424,12 @@ test("equipment availability honours equipmentSatisfiedBy (adjustable bench ⊇ 
   assert.ok(dumbbellsAndFlatBench.includes("dumbbell-bulgarian-split-squat"));
   assert.ok(!dumbbellsAndFlatBench.includes("incline-dumbbell-press"));
 
-  // No equipment: nothing in v1 is equipment-free.
-  assert.deepEqual(await library.getExercisesAvailableWith([]), []);
-  assert.deepEqual(await library.getExercisesAvailableWith(undefined), []);
+  // No equipment: only the bodyweight exercises that need none.
+  const none = await library.getExercisesAvailableWith([]);
+
+  assert.deepEqual(ids(none), rawIdsWhere(e => e.equipment.length === 0));
+  assert.ok(ids(none).includes("bodyweight-sissy-squat"));
+  assert.deepEqual(ids(await library.getExercisesAvailableWith(undefined)), ids(none));
 });
 
 test("indexes match a brute-force scan of the raw JSON", async () => {
@@ -510,8 +522,8 @@ test("library data is deeply frozen (read-only)", async () => {
   assert.throws(() => { vocab.muscles.push("wings"); }, TypeError);
 
   // And nothing changed.
-  assert.equal((await library.getExercise("barbell-back-squat")).name, "Barbell Back Squat");
-  assert.equal((await library.getExercisesByMuscle("lats")).length, 4);
+  assert.equal((await library.getExercise("barbell-back-squat")).name, "Barbell High-Bar Back Squat");
+  assert.equal((await library.getExercisesByMuscle("lats")).length, rawIdsWhere(e => e.primaryMuscles.includes("lats")).length);
 });
 
 test("mutating a returned list cannot corrupt later queries", async () => {
@@ -523,7 +535,7 @@ test("mutating a returned list cannot corrupt later queries", async () => {
 
   const second = await library.getExercisesByMovementPattern("squat");
 
-  assert.equal(second.length, 3);
+  assert.equal(second.length, rawIdsWhere(e => e.movementPattern === "squat").length);
 });
 
 
@@ -536,9 +548,9 @@ test("vocabularies are exposed", async () => {
 
   const vocab = await library.getVocabularies();
 
-  assert.equal(vocab.muscles.length, 18);
-  assert.equal(vocab.equipment.length, 14);
-  assert.equal(vocab.movementPatterns.length, 16);
+  assert.equal(vocab.muscles.length, 20);
+  assert.equal(vocab.equipment.length, 39);
+  assert.equal(vocab.movementPatterns.length, 24);
   assert.deepEqual(vocab.lateralities, ["bilateral", "unilateral"]);
 });
 

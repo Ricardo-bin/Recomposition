@@ -21,8 +21,60 @@
 
 import { normalizeExerciseText } from "./data/exerciseLibrary.js";
 
-// Up to this many library results are offered (the custom option is extra).
-export const PICKER_MAX_RESULTS = 6;
+// Search is never truncated: the list scrolls inside the picker. Pass this as
+// the library search `limit` (a huge integer) so every match is returned.
+export const PICKER_SEARCH_LIMIT = Number.MAX_SAFE_INTEGER;
+
+
+// ----------------------------------------------------------------------------
+// CATEGORIES (simple browse filter). Derived from the FIRST primary muscle, so
+// no new schema field is needed and every exercise has exactly one category.
+// ----------------------------------------------------------------------------
+
+export const PICKER_CATEGORIES = Object.freeze([
+  "ALL", "CHEST", "BACK", "SHOULDERS", "ARMS", "LEGS", "CORE"
+]);
+
+const MUSCLE_CATEGORY = Object.freeze({
+  chest: "CHEST",
+  lats: "BACK",
+  "upper-back": "BACK",
+  traps: "BACK",
+  "lower-back": "BACK",
+  "front-delts": "SHOULDERS",
+  "side-delts": "SHOULDERS",
+  "rear-delts": "SHOULDERS",
+  biceps: "ARMS",
+  triceps: "ARMS",
+  forearms: "ARMS",
+  quadriceps: "LEGS",
+  hamstrings: "LEGS",
+  glutes: "LEGS",
+  adductors: "LEGS",
+  calves: "LEGS",
+  "tibialis-anterior": "LEGS",
+  abs: "CORE",
+  obliques: "CORE",
+  "hip-flexors": "CORE"
+});
+
+// "CHEST" | "BACK" | ... or null when the exercise has no known muscle.
+export function getExerciseCategory(libraryExercise) {
+  const first = libraryExercise?.primaryMuscles?.[0];
+
+  return MUSCLE_CATEGORY[first] ?? null;
+}
+
+// Keeps library order. "ALL" (or an unknown category) returns every exercise.
+export function filterByCategory(exercises, category) {
+  const list = Array.isArray(exercises) ? exercises : [];
+
+  if (!PICKER_CATEGORIES.includes(category) || category === "ALL") {
+    return list;
+  }
+
+  return list.filter(exercise => getExerciseCategory(exercise) === category);
+}
 
 
 // ----------------------------------------------------------------------------
@@ -181,22 +233,29 @@ export function findMatchedAlias(libraryExercise, query) {
 // The custom row is offered whenever the trimmed text is not empty and is not
 // an exact (normalised) match of a library exercise NAME. An exact alias match
 // still shows it, so the user can always choose a custom "Squat" on purpose.
-// An empty box yields no rows (no browse list in this step).
+// An EMPTY query is "browse all": every result becomes a library row (no
+// custom row, nothing typed). Pass the complete library as searchResults.
 // { allowCustom: false } never adds the custom row (library-only pickers).
 export function buildPickerOptions(
   query,
   searchResults,
-  { max = PICKER_MAX_RESULTS, allowCustom = true } = {}
+  { max = Infinity, allowCustom = true } = {}
 ) {
   const text = typeof query === "string" ? query.trim() : "";
 
-  if (!text) {
-    return [];
-  }
-
   const results = Array.isArray(searchResults) ? searchResults : [];
 
-  const limit = Number.isInteger(max) && max > 0 ? max : PICKER_MAX_RESULTS;
+  const limit = Number.isInteger(max) && max > 0 ? max : Infinity;
+
+  if (!text) {
+    return results.slice(0, limit).map(exercise => ({
+      type: "library",
+      id: exercise.id,
+      name: exercise.name,
+      subtitle: formatExerciseSubtitle(exercise),
+      matchedAlias: null
+    }));
+  }
 
   const options = results.slice(0, limit).map(exercise => ({
     type: "library",

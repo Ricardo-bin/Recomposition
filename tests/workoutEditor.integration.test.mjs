@@ -318,10 +318,10 @@ test("card title and status line follow typing and selection", { skip }, async (
 
   t.tap(t.rows(0)[0]);
 
-  assert.equal(t.title(0), "Barbell Back Squat");
+  assert.equal(t.title(0), "Barbell High-Bar Back Squat");
   assert.equal(t.status(0).dataset.linkKind, "library");
-  assert.equal(t.status(0).textContent, "Library: Barbell Back Squat");
-  assert.equal(t.field(0, "name").value, "Barbell Back Squat");
+  assert.equal(t.status(0).textContent, "Library: Barbell High-Bar Back Squat");
+  assert.equal(t.field(0, "name").value, "Barbell High-Bar Back Squat");
 });
 
 
@@ -358,7 +358,7 @@ test("existing LINKED plan: untouched save keeps the link, name and slot ids", {
   await settle();
 
   assert.equal(t.status(0).dataset.linkKind, "library");
-  assert.equal(t.status(0).textContent, "Library: Hack Squat");
+  assert.equal(t.status(0).textContent, "Library: Machine Hack Squat");
   assert.equal(t.status(1).dataset.linkKind, "custom");
 
   await t.save();
@@ -428,8 +428,8 @@ test("typing text equal to a library name does NOT relink; re-selecting does", {
 
   await t.openExisting();
 
-  await t.type(0, "Hack Squat ");     // unlink
-  await t.type(0, "Hack Squat");      // exactly the library name again
+  await t.type(0, "Machine Hack Squat ");     // unlink
+  await t.type(0, "Machine Hack Squat");      // exactly the library name again
 
   assert.equal("libraryExerciseId" in t.editing()[0], false, "no automatic relink");
 
@@ -442,7 +442,7 @@ test("typing text equal to a library name does NOT relink; re-selecting does", {
   const [exercise] = t.savedExercises();
 
   assert.equal(exercise.libraryExerciseId, "hack-squat");
-  assert.equal(exercise.name, "Hack Squat");
+  assert.equal(exercise.name, "Machine Hack Squat");
   assert.equal(exercise.id, "slot-1");
 });
 
@@ -461,7 +461,7 @@ test("re-selecting a DIFFERENT library exercise keeps the slot id (Leg Press -> 
   const [exercise] = t.savedExercises();
 
   assert.equal(exercise.libraryExerciseId, "hack-squat");
-  assert.equal(exercise.name, "Hack Squat");
+  assert.equal(exercise.name, "Machine Hack Squat");
   assert.equal(exercise.id, "slot-1");
   assert.equal(exercise.restSeconds, 120);
 });

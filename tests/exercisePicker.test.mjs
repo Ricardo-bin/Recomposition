@@ -12,7 +12,10 @@ import { fileURLToPath } from "node:url";
 import { createExerciseLibrary } from "../data/exerciseLibrary.js";
 
 import {
-  PICKER_MAX_RESULTS,
+  PICKER_SEARCH_LIMIT,
+  PICKER_CATEGORIES,
+  getExerciseCategory,
+  filterByCategory,
   isLinked,
   libraryLinkField,
   applyLibrarySelection,
@@ -108,7 +111,7 @@ test("selecting a library exercise sets canonical name + libraryExerciseId", asy
 
   const result = applyLibrarySelection(legacy(), squat);
 
-  assert.equal(result.name, "Barbell Back Squat");
+  assert.equal(result.name, "Barbell High-Bar Back Squat");
   assert.equal(result.libraryExerciseId, "barbell-back-squat");
 });
 
@@ -158,7 +161,7 @@ test("re-selecting a different library exercise keeps the same slot id", async (
 
   assert.equal(first.libraryExerciseId, "leg-press");
   assert.equal(second.libraryExerciseId, "hack-squat");
-  assert.equal(second.name, "Hack Squat");
+  assert.equal(second.name, "Machine Hack Squat");
   assert.equal(first.id, "slot-uuid-1111");
   assert.equal(second.id, "slot-uuid-1111");
   assert.equal(second.notes, "pause at the bottom");
@@ -301,7 +304,7 @@ test("link status: library / library-missing / custom", async () => {
 
   assert.deepEqual(getLinkStatus(linked(), squat), {
     kind: "library",
-    text: "Library: Barbell Back Squat"
+    text: "Library: Barbell High-Bar Back Squat"
   });
 
   assert.deepEqual(getLinkStatus(legacy(), null), {
@@ -347,11 +350,12 @@ test("findMatchedAlias: alias when the alias (not the name) matched", async () =
   const squat = await library.getExercise("barbell-back-squat");
 
   assert.equal(findMatchedAlias(rdl, "rdl"), "RDL");
-  assert.equal(findMatchedAlias(dip, "Dips"), "Dips");
+  assert.equal(findMatchedAlias(await library.getExercise("dumbbell-flat-bench-press"), "DB Bench"), "DB Bench Press");
+  assert.ok(dip);
 
   // Name matches -> no alias hint
   assert.equal(findMatchedAlias(rdl, "romanian"), null);
-  assert.equal(findMatchedAlias(squat, "barbell back"), null);
+  assert.equal(findMatchedAlias(squat, "barbell high bar"), null);
 
   assert.equal(findMatchedAlias(rdl, ""), null);
   assert.equal(findMatchedAlias(null, "rdl"), null);
@@ -362,27 +366,30 @@ test("findMatchedAlias: alias when the alias (not the name) matched", async () =
 // buildPickerOptions
 // ----------------------------------------------------------------------------
 
-test("empty / whitespace / non-string query -> no rows", async () => {
-  const results = await library.searchExercises("squat");
+test("empty / whitespace / non-string query -> browse ALL: every result, no custom row", async () => {
+  const all = await library.getAllExercises();
 
-  assert.deepEqual(buildPickerOptions("", results), []);
-  assert.deepEqual(buildPickerOptions("   ", results), []);
-  assert.deepEqual(buildPickerOptions(null, results), []);
-  assert.deepEqual(buildPickerOptions(undefined, results), []);
+  for (const query of ["", "   ", null, undefined]) {
+    const options = buildPickerOptions(query, all);
+
+    assert.equal(options.length, all.length);
+    assert.ok(options.every(o => o.type === "library" && o.matchedAlias === null));
+    assert.deepEqual(options.map(o => o.id), all.map(e => e.id), "library order");
+  }
+
+  assert.deepEqual(buildPickerOptions("", []), []);
 });
 
-test("at most 6 library rows, followed by the custom row", async () => {
-  const results = await library.searchExercises("a", { limit: 20 });
+test("search is NOT capped: every match is a row, followed by the custom row", async () => {
+  const results = await library.searchExercises("a", { limit: PICKER_SEARCH_LIMIT });
 
-  assert.ok(results.length > PICKER_MAX_RESULTS, "test needs more than 6 hits");
+  assert.ok(results.length > 6, "test needs more than 6 hits");
 
   const options = buildPickerOptions("a", results);
 
-  assert.equal(PICKER_MAX_RESULTS, 6);
-  assert.equal(options.filter(o => o.type === "library").length, 6);
-  assert.equal(options.length, 7);
-  assert.equal(options[6].type, "custom");
-  assert.equal(options[6].name, "a");
+  assert.equal(options.filter(o => o.type === "library").length, results.length);
+  assert.equal(options.at(-1).type, "custom");
+  assert.equal(options.at(-1).name, "a");
 });
 
 test("library rows carry id, name, subtitle and matchedAlias", async () => {
@@ -409,13 +416,13 @@ test("custom row is offered when text is not an exact library NAME", async () =>
 });
 
 test("no custom row when the text exactly matches a library name", async () => {
-  const results = await library.searchExercises("hack squat");
-  const options = buildPickerOptions("hack squat", results);
+  const results = await library.searchExercises("machine hack squat");
+  const options = buildPickerOptions("machine hack squat", results);
 
   assert.equal(options[0].id, "hack-squat");
   assert.ok(options.every(o => o.type === "library"));
 
-  const upper = buildPickerOptions("HACK-SQUAT", await library.searchExercises("HACK-SQUAT"));
+  const upper = buildPickerOptions("MACHINE-HACK-SQUAT", await library.searchExercises("MACHINE-HACK-SQUAT"));
 
   assert.ok(upper.every(o => o.type === "library"), "case/punctuation-insensitive");
 });
@@ -434,7 +441,7 @@ test("custom row is always last and library rows keep search order", async () =>
 
   const libraryIds = options.filter(o => o.type === "library").map(o => o.id);
 
-  assert.deepEqual(libraryIds, results.slice(0, 6).map(r => r.id));
+  assert.deepEqual(libraryIds, results.map(r => r.id));
   assert.equal(options.at(-1).type, "custom");
 });
 
@@ -445,7 +452,7 @@ test("buildPickerOptions tolerates bad searchResults and custom max", async () =
   const results = await library.searchExercises("a", { limit: 20 });
 
   assert.equal(buildPickerOptions("a", results, { max: 2 }).filter(o => o.type === "library").length, 2);
-  assert.equal(buildPickerOptions("a", results, { max: 0 }).filter(o => o.type === "library").length, 6);
+  assert.equal(buildPickerOptions("a", results, { max: 0 }).filter(o => o.type === "library").length, results.length);
 });
 
 test("buildPickerOptions does not mutate the (frozen) search results", async () => {
@@ -457,4 +464,72 @@ test("buildPickerOptions does not mutate the (frozen) search results", async () 
   buildPickerOptions("squat", results);
 
   assert.deepEqual(results.map(r => r.id), before);
+});
+
+
+// ----------------------------------------------------------------------------
+// categories (simple browse filter)
+// ----------------------------------------------------------------------------
+
+test("categories: the six filters exist and every exercise has exactly one", async () => {
+  assert.deepEqual(
+    [...PICKER_CATEGORIES],
+    ["ALL", "CHEST", "BACK", "SHOULDERS", "ARMS", "LEGS", "CORE"]
+  );
+
+  const all = await library.getAllExercises();
+
+  for (const exercise of all) {
+    assert.ok(
+      PICKER_CATEGORIES.includes(getExerciseCategory(exercise)) &&
+        getExerciseCategory(exercise) !== "ALL",
+      `${exercise.id} has a category`
+    );
+  }
+
+  const counts = {};
+
+  for (const category of PICKER_CATEGORIES.slice(1)) {
+    counts[category] = filterByCategory(all, category).length;
+    assert.ok(counts[category] > 0, `${category} is represented`);
+  }
+
+  assert.equal(
+    Object.values(counts).reduce((a, b) => a + b, 0),
+    all.length,
+    "categories partition the library"
+  );
+});
+
+test("categories follow the catalog sections", async () => {
+  const category = async id => getExerciseCategory(await library.getExercise(id));
+
+  assert.equal(await category("barbell-bench-press"), "CHEST");
+  assert.equal(await category("parallel-bar-dip"), "CHEST");
+  assert.equal(await category("lat-pulldown"), "BACK");
+  assert.equal(await category("barbell-shrug"), "BACK");
+  assert.equal(await category("dumbbell-lateral-raise"), "SHOULDERS");
+  assert.equal(await category("face-pull"), "SHOULDERS");
+  assert.equal(await category("dumbbell-biceps-curl"), "ARMS");
+  assert.equal(await category("weighted-triceps-dips"), "ARMS");
+  assert.equal(await category("barbell-back-squat"), "LEGS");
+  assert.equal(await category("conventional-deadlift"), "LEGS");
+  assert.equal(await category("standing-calf-raise"), "LEGS");
+  assert.equal(await category("cable-crunch"), "CORE");
+});
+
+test("filterByCategory keeps library order; ALL / unknown return everything; no mutation", async () => {
+  const all = await library.getAllExercises();
+
+  assert.equal(filterByCategory(all, "ALL").length, all.length);
+  assert.equal(filterByCategory(all, "NOPE").length, all.length);
+  assert.deepEqual(filterByCategory(null, "CHEST"), []);
+
+  const chest = filterByCategory(all, "CHEST");
+
+  assert.deepEqual(
+    chest.map(e => e.id),
+    all.filter(e => getExerciseCategory(e) === "CHEST").map(e => e.id)
+  );
+  assert.ok(Object.isFrozen(all), "input untouched");
 });

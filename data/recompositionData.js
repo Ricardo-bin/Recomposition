@@ -187,6 +187,36 @@ export async function createWorkoutLog(log) {
   return logRef.id;
 }
 
+// Idempotent save used by the offline queue: the log document id is the
+// workout's stable id, so retrying the same workout overwrites ONE document
+// instead of creating another. `createdAt` comes from the queued payload so a
+// retry never changes it.
+export async function saveWorkoutLogOnce(uid, logId, log) {
+  // The queued write is bound to the UID whose queue is syncing. It never
+  // falls back to whoever is signed in now: if that is someone else, nothing
+  // is written.
+  if (!uid || auth.currentUser?.uid !== uid) {
+    const error = new Error("The signed-in account changed; nothing was written.");
+    error.code = "account-changed";
+    throw error;
+  }
+
+  const now = new Date();
+
+  await setDoc(
+    doc(db, "users", uid, "workoutLogs", logId),
+    {
+      ...log,
+      date: log.date ?? now,
+      status: log.status ?? "completed",
+      createdAt: log.createdAt ?? now,
+      updatedAt: log.createdAt ?? now
+    }
+  );
+
+  return logId;
+}
+
 // ---------------------------------------------------------------------------
 // WORKOUT LOG QUERIES
 //

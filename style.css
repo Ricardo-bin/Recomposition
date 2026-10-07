@@ -7222,3 +7222,227 @@ body::before {
   color: var(--text-muted);
   font-size: 11px;
 }
+
+/* ==========================================================================
+   Exercise Library completion: browse-all picker, category chips, Smart
+   Alternatives. Existing tokens only, so Batman Dark and Linkin Park Light
+   each follow their own palette.
+   ========================================================================== */
+
+/* Long lists scroll INSIDE the picker (inline editor list). */
+.exercise-picker-list.is-open {
+  max-height: min(48vh, 340px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.exercise-picker-empty {
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The "custom" row stays reachable at the bottom of a long scrolling list. */
+.exercise-picker-option--custom {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-panel-2, var(--field-bg));
+}
+
+/* ---- Category chips ---- */
+.exercise-picker-filters {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin: var(--space-2, 8px) 0 0;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.exercise-picker-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.exercise-picker-filter {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-medium, var(--border-subtle));
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: var(--text-xs, 12px);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.exercise-picker-filter.is-active {
+  color: var(--btn-text, #000);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ---- Selected row (pinned lists) ---- */
+.exercise-picker-option.is-selected {
+  background: rgba(var(--accent-rgb), 0.14);
+  border-left-color: var(--accent);
+}
+
+/* ---- Alternative Today sheet: fixed header/footer, list scrolls inside ---- */
+.alt-sheet {
+  max-height: var(--alt-vv-height, 100%);
+}
+
+.alt-picker-host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.alt-picker-host .exercise-picker {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.alt-picker-host .exercise-picker-list.is-open {
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: none;
+}
+
+.alt-sheet--all {
+  overflow-y: hidden;
+}
+
+/* Browsing: keep the TODAY ONLY notice, drop the long intro to save height. */
+.alt-sheet--all .alt-sheet-lead:not(.alt-sheet-lead--strong) {
+  display: none;
+}
+
+.alt-sheet:not(.alt-sheet--all) .alt-picker-host .exercise-picker-filters {
+  display: none;
+}
+
+.alt-recommended {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.alt-recommended[hidden],
+.alt-back[hidden] {
+  display: none;
+}
+
+.alt-recommended-label {
+  color: var(--accent);
+  font-family: var(--font-display);
+  text-transform: var(--display-transform, inherit);
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+.alt-recommended-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--field-bg, var(--bg-panel-2));
+  border: 1px solid var(--field-border, var(--border-accent));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.alt-recommended-list li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.alt-recommended-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.alt-recommended-option .exercise-picker-option-name,
+.alt-recommended-option .exercise-picker-option-sub {
+  overflow-wrap: anywhere;
+}
+
+.alt-recommended-option.is-selected {
+  background: rgba(var(--accent-rgb), 0.14);
+  border-left-color: var(--accent);
+}
+
+.alt-view-all,
+.alt-back {
+  align-self: stretch;
+  min-height: 44px;
+  white-space: normal;
+}
+
+.alt-sheet-summary,
+.alt-sheet-error,
+.alt-sheet-actions {
+  flex: 0 0 auto;
+}
+
+
+/* ---- Sync status (offline saving / syncing / saved) ---- */
+.sync-status {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--space-4, 16px) + env(safe-area-inset-bottom, 0px) + 64px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: min(92vw, 420px);
+  padding: 8px 14px;
+  transform: translateX(-50%);
+  color: var(--text-primary);
+  background: var(--bg-panel-2, var(--field-bg));
+  border: 1px solid var(--border-medium, var(--border-subtle));
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md, 10px);
+  font-family: var(--font-body);
+  font-size: var(--text-xs, 12px);
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+
+.sync-status[hidden] {
+  display: none;
+}
+
+.sync-status strong {
+  letter-spacing: 0.8px;
+}
+
+.sync-status span {
+  color: var(--text-secondary);
+}

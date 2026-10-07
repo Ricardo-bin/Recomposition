@@ -4,9 +4,16 @@
 // The inline "combobox" under an exercise name box in the workout plan editor.
 //
 //   - Search-as-you-type over the Exercise Library (via data/exerciseLibrary.js).
-//   - Up to 6 library rows, then the custom row (rules live in exercisePicker.js).
+//   - BROWSE ALL: an empty box lists the complete library (focus, tap or clear
+//     the text); typing filters it. The list scrolls inside itself. Simple
+//     category chips (ALL / CHEST / BACK / ...) narrow the list.
+//   - Library rows, then the custom row (rules live in exercisePicker.js).
 //     ctx.allowCustom === false makes it library-only (no custom row).
 //     ctx.onResults(query, rowCount) is an optional hook after each search.
+//   - ctx.browse === false turns browse-all off (typing is required).
+//   - ctx.pinned === true keeps the list open (blur, selecting and Escape do
+//     not close it) and marks the chosen row; used by the Alternative Today
+//     sheet. controller.openAll() / closeAll() drive it.
 //   - Mouse, touch, ArrowUp/ArrowDown, Enter, Escape.
 //   - Never owns plan data: it asks workout.js (through `ctx`) to change state.
 //   - Never blocks typing: if the library fails to load, a small note appears and
@@ -30,12 +37,15 @@
 
 import {
   searchExercises as defaultSearchExercises,
+  getAllExercises as defaultGetAllExercises,
   getExercise as defaultGetExercise
 } from "./data/exerciseLibrary.js";
 
 import {
-  PICKER_MAX_RESULTS,
+  PICKER_SEARCH_LIMIT,
+  PICKER_CATEGORIES,
   buildPickerOptions,
+  getExerciseCategory,
   getLinkStatus,
   isLinked
 } from "./exercisePicker.js";
@@ -81,8 +91,23 @@ export function attachExercisePicker(listElement, ctx) {
 
   const library = {
     searchExercises: ctx.library?.searchExercises ?? defaultSearchExercises,
+    getAllExercises: ctx.library
+      ? ctx.library.getAllExercises
+      : defaultGetAllExercises,
     getExercise: ctx.library?.getExercise ?? defaultGetExercise
   };
+
+  const pinned = ctx.pinned === true;
+  const browse = ctx.browse !== false;
+
+  // Pinned mode: true once the list has been opened, until closeAll().
+  let pinnedActive = false;
+
+  // Pinned mode: the row the user chose.
+  let selectedId = null;
+
+  // Category chip state per picker (reset when the list closes).
+  const categories = new WeakMap();
 
   // Increments on every new query / close. A search result is only applied if
   // its number is still current, so stale async results can never overwrite a
@@ -121,6 +146,9 @@ export function attachExercisePicker(listElement, ctx) {
       dropdown.replaceChildren();
       dropdownData.delete(dropdown);
     }
+
+    wrap?.querySelector(".exercise-picker-filters")?.remove();
+    categories.delete(wrap);
 
     if (input) {
       input.setAttribute("aria-expanded", "false");
@@ -174,7 +202,44 @@ export function attachExercisePicker(listElement, ctx) {
   // render dropdown (built with DOM APIs + textContent: user text is never HTML)
   // --------------------------------------------------------------------------
 
-  function renderDropdown(wrap, input, rows, results) {
+  const doc = () => listElement.ownerDocument;
+
+  // The chip row sits just above the list; created on demand so every card
+  // template keeps working unchanged.
+  function ensureFilters(wrap, dropdown) {
+    let bar = wrap.querySelector(".exercise-picker-filters");
+
+    if (!bar) {
+      bar = doc().createElement("div");
+      bar.className = "exercise-picker-filters";
+      bar.setAttribute("role", "group");
+      bar.setAttribute("aria-label", "Filter by muscle group");
+
+      PICKER_CATEGORIES.forEach(category => {
+        const chip = doc().createElement("button");
+
+        chip.type = "button";
+        chip.className = "exercise-picker-filter";
+        chip.dataset.category = category;
+        chip.textContent = category;
+
+        bar.append(chip);
+      });
+
+      dropdown.before(bar);
+    }
+
+    const current = categories.get(wrap) ?? "ALL";
+
+    bar.querySelectorAll(".exercise-picker-filter").forEach(chip => {
+      const active = chip.dataset.category === current;
+
+      chip.classList.toggle("is-active", active);
+      chip.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function renderDropdown(wrap, input, allRows, results, query) {
     const dropdown = wrap.querySelector(".exercise-picker-list");
 
     if (!dropdown) {
@@ -183,19 +248,36 @@ export function attachExercisePicker(listElement, ctx) {
 
     const index = indexOf(input);
 
+    const byId = new Map(results.map(exercise => [exercise.id, exercise]));
+
+    const category = categories.get(wrap) ?? "ALL";
+
+    const rows =
+      category === "ALL"
+        ? allRows
+        : allRows.filter(
+            row =>
+              row.type !== "library" ||
+              getExerciseCategory(byId.get(row.id)) === category
+          );
+
     dropdown.replaceChildren();
 
     rows.forEach((row, i) => {
-      const li = listElement.ownerDocument.createElement("li");
+      const li = doc().createElement("li");
 
       li.id = `exercise-picker-${index}-option-${i}`;
       li.className = `exercise-picker-option exercise-picker-option--${row.type}`;
       li.setAttribute("role", "option");
-      li.setAttribute("aria-selected", "false");
       li.dataset.optionIndex = String(i);
       li.dataset.optionType = row.type;
 
-      const title = listElement.ownerDocument.createElement("span");
+      const chosen = pinned && row.type === "library" && row.id === selectedId;
+
+      li.setAttribute("aria-selected", chosen ? "true" : "false");
+      li.classList.toggle("is-selected", chosen);
+
+      const title = doc().createElement("span");
       title.className = "exercise-picker-option-name";
 
       if (row.type === "library") {
@@ -203,13 +285,13 @@ export function attachExercisePicker(listElement, ctx) {
         li.dataset.exerciseId = row.id;
         li.append(title);
 
-        const sub = listElement.ownerDocument.createElement("span");
+        const sub = doc().createElement("span");
         sub.className = "exercise-picker-option-sub";
         sub.textContent = row.subtitle;
         li.append(sub);
 
         if (row.matchedAlias) {
-          const alias = listElement.ownerDocument.createElement("span");
+          const alias = doc().createElement("span");
           alias.className = "exercise-picker-option-alias";
           alias.textContent = `matches "${row.matchedAlias}"`;
           li.append(alias);
@@ -218,7 +300,7 @@ export function attachExercisePicker(listElement, ctx) {
         title.textContent = `Use "${row.name}" as a custom exercise`;
         li.append(title);
 
-        const sub = listElement.ownerDocument.createElement("span");
+        const sub = doc().createElement("span");
         sub.className = "exercise-picker-option-sub";
         sub.textContent = "Not linked to the exercise library";
         li.append(sub);
@@ -227,7 +309,20 @@ export function attachExercisePicker(listElement, ctx) {
       dropdown.append(li);
     });
 
-    dropdownData.set(dropdown, { rows, results });
+    if (!rows.some(row => row.type === "library")) {
+      const empty = doc().createElement("li");
+
+      empty.className = "exercise-picker-empty";
+      empty.setAttribute("role", "presentation");
+      empty.textContent = "No exercises in this category.";
+
+      dropdown.prepend(empty);
+    }
+
+    ensureFilters(wrap, dropdown);
+
+    // "rows" (not allRows) is what keyboard / click indexes refer to.
+    dropdownData.set(dropdown, { rows, results, allRows, query });
 
     dropdown.dataset.activeIndex = "-1";
     dropdown.classList.add("is-open");
@@ -244,7 +339,9 @@ export function attachExercisePicker(listElement, ctx) {
   async function runSearch(input) {
     const mine = ++sequence;
 
-    const { wrap } = partsOf(input);
+    const { wrap, dropdown } = partsOf(input);
+
+    const wasOpen = isOpen(dropdown);
 
     const query = input.value.trim();
 
@@ -257,7 +354,10 @@ export function attachExercisePicker(listElement, ctx) {
         }
       });
 
-    if (!query) {
+    const browsing = !query;
+
+    // Nothing typed and browse-all is off (and not pinned open): stay closed.
+    if (browsing && !browse && !pinnedActive) {
       closeDropdown(wrap);
       ctx.onResults?.("", 0);
       return;
@@ -266,9 +366,19 @@ export function attachExercisePicker(listElement, ctx) {
     let results;
 
     try {
-      results = await library.searchExercises(query, {
-        limit: PICKER_MAX_RESULTS
-      });
+      if (browsing) {
+        if (typeof library.getAllExercises !== "function") {
+          closeDropdown(wrap);
+          ctx.onResults?.("", 0);
+          return;
+        }
+
+        results = await library.getAllExercises();
+      } else {
+        results = await library.searchExercises(query, {
+          limit: PICKER_SEARCH_LIMIT
+        });
+      }
     } catch (error) {
       if (mine !== sequence) {
         return;
@@ -293,7 +403,7 @@ export function attachExercisePicker(listElement, ctx) {
 
     setNoteVisible(wrap, false);
 
-    const rows = buildPickerOptions(query, results, {
+    const rows = buildPickerOptions(query, [...results], {
       allowCustom: ctx.allowCustom !== false
     });
 
@@ -305,7 +415,30 @@ export function attachExercisePicker(listElement, ctx) {
       return;
     }
 
-    renderDropdown(wrap, input, rows, results);
+    if (pinned) {
+      pinnedActive = true;
+    }
+
+    renderDropdown(wrap, input, rows, [...results], query);
+
+    // Inline lists: bring the box to the top so the keyboard cannot hide rows.
+    if (!wasOpen && !pinned) {
+      input.scrollIntoView?.({ block: "start" });
+    }
+  }
+
+  // Re-render the open list for another category (no new search).
+  function applyCategory(wrap, input, category) {
+    const dropdown = wrap.querySelector(".exercise-picker-list");
+    const data = dropdownData.get(dropdown);
+
+    if (!data) {
+      return;
+    }
+
+    categories.set(wrap, category);
+
+    renderDropdown(wrap, input, data.allRows, data.results, data.query);
   }
 
 
@@ -330,6 +463,20 @@ export function attachExercisePicker(listElement, ctx) {
         { id: row.id, name: row.name };
 
       ctx.onSelect(index, libraryExercise);
+
+      if (pinned) {
+        // Stay open, keep the search text, just mark the chosen row.
+        selectedId = row.id;
+
+        dropdown.querySelectorAll(".exercise-picker-option").forEach(option => {
+          const chosen = option.dataset.exerciseId === row.id;
+
+          option.classList.toggle("is-selected", chosen);
+          option.setAttribute("aria-selected", chosen ? "true" : "false");
+        });
+
+        return;
+      }
 
       const current = ctx.getExercise(index);
 
@@ -368,6 +515,8 @@ export function attachExercisePicker(listElement, ctx) {
     const index = indexOf(input);
     const { wrap } = partsOf(input);
 
+    selectedId = null;
+
     // State first (may unlink the exercise), then the status line, then search.
     ctx.onNameInput(index, input.value);
 
@@ -397,7 +546,7 @@ export function attachExercisePicker(listElement, ctx) {
         event.preventDefault();
 
         if (!open) {
-          if (input.value.trim()) {
+          if (input.value.trim() || browse) {
             runSearch(input);
           }
           return;
@@ -435,7 +584,7 @@ export function attachExercisePicker(listElement, ctx) {
         return;
 
       case "Escape":
-        if (!open) {
+        if (!open || pinned) {
           return;
         }
 
@@ -457,21 +606,74 @@ export function attachExercisePicker(listElement, ctx) {
       return;
     }
 
+    // Pinned lists stay open. Moving focus to a chip in the same picker keeps
+    // the list too.
+    if (pinned) {
+      return;
+    }
+
+    const { wrap } = partsOf(input);
+
+    if (event.relatedTarget && wrap?.contains(event.relatedTarget)) {
+      return;
+    }
+
     // Invalidate any in-flight search and close.
     sequence += 1;
 
-    closeDropdown(partsOf(input).wrap);
+    closeDropdown(wrap);
+  }
+
+  // Focusing (or tapping) an EMPTY box shows the whole library.
+  function onFocusIn(event) {
+    const input = event.target.closest?.(NAME_INPUT);
+
+    if (!input || !browse || input.value.trim() || input.disabled) {
+      return;
+    }
+
+    if (!isOpen(partsOf(input).dropdown)) {
+      runSearch(input);
+    }
   }
 
   // Keep focus in the text box when an option is pressed (prevents the blur
   // that would close the list before the click lands, on mouse and on touch).
   function onMouseDown(event) {
-    if (event.target.closest?.(".exercise-picker-option")) {
+    if (
+      event.target.closest?.(
+        ".exercise-picker-option, .exercise-picker-filter"
+      )
+    ) {
       event.preventDefault();
     }
   }
 
   function onClick(event) {
+    const chip = event.target.closest?.(".exercise-picker-filter");
+
+    if (chip) {
+      const wrap = chip.closest(".exercise-picker");
+      const input = wrap?.querySelector(NAME_INPUT);
+
+      if (wrap && input) {
+        applyCategory(wrap, input, chip.dataset.category);
+      }
+
+      return;
+    }
+
+    const box = event.target.closest?.(NAME_INPUT);
+
+    // Tapping the box again (after Escape) reopens the full list.
+    if (box) {
+      if (browse && !box.value.trim() && !isOpen(partsOf(box).dropdown)) {
+        runSearch(box);
+      }
+
+      return;
+    }
+
     const option = event.target.closest?.(".exercise-picker-option");
 
     if (!option) {
@@ -537,16 +739,31 @@ export function attachExercisePicker(listElement, ctx) {
 
   listElement.addEventListener("input", onInput);
   listElement.addEventListener("keydown", onKeyDown);
+  listElement.addEventListener("focusin", onFocusIn);
   listElement.addEventListener("focusout", onFocusOut);
   listElement.addEventListener("mousedown", onMouseDown);
   listElement.addEventListener("click", onClick);
 
   const controller = Object.freeze({
     hydrate,
-    closeAll: closeAllDropdowns,
+    closeAll() {
+      pinnedActive = false;
+      selectedId = null;
+      sequence += 1;
+      closeAllDropdowns();
+    },
+    // Opens the list for whatever is in the box (empty = the whole library).
+    openAll() {
+      const input = listElement.querySelector(NAME_INPUT);
+
+      if (input) {
+        return runSearch(input);
+      }
+    },
     destroy() {
       listElement.removeEventListener("input", onInput);
       listElement.removeEventListener("keydown", onKeyDown);
+      listElement.removeEventListener("focusin", onFocusIn);
       listElement.removeEventListener("focusout", onFocusOut);
       listElement.removeEventListener("mousedown", onMouseDown);
       listElement.removeEventListener("click", onClick);

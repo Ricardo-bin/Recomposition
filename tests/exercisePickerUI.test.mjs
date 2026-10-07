@@ -141,7 +141,7 @@ const deferred = () => {
 // OPENING + ROWS
 // ----------------------------------------------------------------------------
 
-test("typing opens the dropdown with <= 6 library rows then the custom row", { skip }, async () => {
+test("typing opens the dropdown with EVERY match (no cap), then the custom row", { skip }, async () => {
   const t = setup();
 
   await t.type(0, "a");
@@ -150,10 +150,12 @@ test("typing opens the dropdown with <= 6 library rows then the custom row", { s
   assert.equal(t.input(0).getAttribute("aria-expanded"), "true");
 
   const rows = t.rows(0);
+  const expected = await realLibrary.searchExercises("a", { limit: 1000 });
 
-  assert.equal(rows.filter(r => r.dataset.optionType === "library").length, 6);
+  assert.ok(expected.length > 6, "more than the old cap of 6");
+  assert.equal(rows.filter(r => r.dataset.optionType === "library").length, expected.length);
   assert.equal(rows.at(-1).dataset.optionType, "custom");
-  assert.equal(rows.length, 7);
+  assert.equal(rows.length, expected.length + 1);
   assert.ok(rows.every(r => r.getAttribute("role") === "option"));
 });
 
@@ -173,7 +175,7 @@ test("rows show name, subtitle and alias-match info", { skip }, async () => {
 test("no alias line when the NAME matched; exact name -> no custom row", { skip }, async () => {
   const t = setup();
 
-  await t.type(0, "hack squat");
+  await t.type(0, "machine hack squat");
 
   const rows = t.rows(0);
 
@@ -194,15 +196,16 @@ test("exact ALIAS match still offers the custom row", { skip }, async () => {
   assert.match(rows.at(-1).textContent, /Use "Squat" as a custom exercise/);
 });
 
-test("empty text closes the dropdown; no match shows only the custom row", { skip }, async () => {
+test("empty text shows the WHOLE library; no match shows only the custom row", { skip }, async () => {
   const t = setup();
 
   await t.type(0, "squat");
   assert.equal(t.isOpen(0), true);
 
   await t.type(0, "");
-  assert.equal(t.isOpen(0), false);
-  assert.equal(t.rows(0).length, 0);
+  assert.equal(t.isOpen(0), true);
+  assert.equal(t.rows(0).length, (await realLibrary.getAllExercises()).length);
+  assert.ok(t.rows(0).every(r => r.dataset.optionType === "library"));
 
   await t.type(0, "zzzzqqq");
   assert.deepEqual(t.rows(0).map(r => r.dataset.optionType), ["custom"]);
@@ -327,9 +330,9 @@ test("manual edit of a linked exercise unlinks it; explicit re-select relinks (s
   t.tap(t.rows(0)[0]);
 
   assert.equal(t.state.exercises[0].libraryExerciseId, "hack-squat");
-  assert.equal(t.state.exercises[0].name, "Hack Squat");
+  assert.equal(t.state.exercises[0].name, "Machine Hack Squat");
   assert.equal(t.state.exercises[0].id, "slot-1");
-  assert.equal(t.status(0).textContent, "Library: Hack Squat");
+  assert.equal(t.status(0).textContent, "Library: Machine Hack Squat");
 });
 
 test("typing text that exactly equals a library name does NOT auto-link", { skip }, async () => {
@@ -416,11 +419,15 @@ test("Escape closes the list and keeps the typed text", { skip }, async () => {
   assert.equal(t.key(0, "Escape").defaultPrevented, false, "Escape when closed is not swallowed");
 });
 
-test("ArrowDown on a closed list with text opens it; with no text does nothing", { skip }, async () => {
+test("ArrowDown on a closed list opens it (text filters; no text browses all)", { skip }, async () => {
   const t = setup();
 
   t.key(0, "ArrowDown");
   await settle();
+  assert.equal(t.isOpen(0), true);
+  assert.equal(t.rows(0).length, (await realLibrary.getAllExercises()).length);
+
+  t.key(0, "Escape");
   assert.equal(t.isOpen(0), false);
 
   t.input(0).value = "row";
@@ -633,7 +640,7 @@ test("hydrate: a linked card shows the library's canonical name", { skip }, asyn
   await settle();
 
   assert.equal(t.status(0).dataset.linkKind, "library");
-  assert.equal(t.status(0).textContent, "Library: Barbell Back Squat");
+  assert.equal(t.status(0).textContent, "Library: Barbell High-Bar Back Squat");
   assert.equal(t.state.exercises[0].libraryExerciseId, "barbell-back-squat", "link untouched");
 });
 
@@ -701,4 +708,150 @@ test("CSS: rows are touch-sized and the list adds no height when closed", () => 
   assert.match(css, /\.exercise-picker-option\s*{[^}]*min-height:\s*var\(--touch-min\)/);
   assert.match(css, /\.exercise-picker-list\s*{[^}]*display:\s*none/);
   assert.match(css, /\.exercise-picker-list\.is-open\s*{[^}]*display:\s*block/);
+});
+
+
+// ----------------------------------------------------------------------------
+// BROWSE ALL + CATEGORY FILTERS
+// ----------------------------------------------------------------------------
+
+const focusIn = (t, i) =>
+  t.input(i).dispatchEvent(new t.window.FocusEvent("focusin", { bubbles: true }));
+
+const chips = (t, i) => [...t.wrap(i).querySelectorAll(".exercise-picker-filter")];
+const chip = (t, i, name) => chips(t, i).find(c => c.dataset.category === name);
+
+test("focusing an EMPTY box shows every library exercise immediately (no search needed)", { skip }, async () => {
+  const t = setup();
+  const all = await realLibrary.getAllExercises();
+
+  focusIn(t, 0);
+  await settle();
+
+  assert.equal(t.isOpen(0), true);
+  assert.equal(t.rows(0).length, all.length);
+  assert.deepEqual(t.rows(0).map(r => r.dataset.exerciseId), all.map(e => e.id));
+  assert.ok(t.rows(0).every(r => r.dataset.optionType === "library"), "no custom row when nothing is typed");
+});
+
+test("focusing a box that already has text does not open the list", { skip }, async () => {
+  const t = setup({ exercises: [{ id: "s", name: "My lift", sets: 3, repMin: 8, repMax: 12, targetRIR: 2, restSeconds: 60, notes: "" }] });
+
+  focusIn(t, 0);
+  await settle();
+
+  assert.equal(t.isOpen(0), false);
+});
+
+test("the six category chips are offered with the list; ALL is active first", { skip }, async () => {
+  const t = setup();
+
+  focusIn(t, 0);
+  await settle();
+
+  assert.deepEqual(chips(t, 0).map(c => c.dataset.category), ["ALL", "CHEST", "BACK", "SHOULDERS", "ARMS", "LEGS", "CORE"]);
+  assert.equal(chip(t, 0, "ALL").getAttribute("aria-pressed"), "true");
+  assert.equal(chip(t, 0, "CHEST").getAttribute("aria-pressed"), "false");
+});
+
+test("a chip filters the list; tapping it keeps the list open; ALL restores everything", { skip }, async () => {
+  const t = setup();
+  const all = await realLibrary.getAllExercises();
+
+  focusIn(t, 0);
+  await settle();
+
+  const down = t.tap(chip(t, 0, "CHEST"));
+
+  assert.equal(down.defaultPrevented, true, "focus stays in the box");
+  assert.equal(t.isOpen(0), true);
+
+  const { filterByCategory } = await import("../exercisePicker.js");
+  const chest = filterByCategory(all, "CHEST");
+
+  assert.deepEqual(t.rows(0).map(r => r.dataset.exerciseId), chest.map(e => e.id));
+  assert.equal(chip(t, 0, "CHEST").getAttribute("aria-pressed"), "true");
+
+  t.tap(chip(t, 0, "ALL"));
+  assert.equal(t.rows(0).length, all.length);
+});
+
+test("search and chip combine; the custom row is not duplicated by a filter", { skip }, async () => {
+  const t = setup();
+
+  await t.type(0, "press");
+
+  const total = t.rows(0).filter(r => r.dataset.optionType === "library").length;
+
+  t.tap(chip(t, 0, "SHOULDERS"));
+
+  const shoulderRows = t.rows(0).filter(r => r.dataset.optionType === "library");
+
+  assert.ok(shoulderRows.length > 0 && shoulderRows.length < total);
+  const { getExerciseCategory } = await import("../exercisePicker.js");
+
+  for (const row of shoulderRows) {
+    assert.equal(getExerciseCategory(await realLibrary.getExercise(row.dataset.exerciseId)), "SHOULDERS");
+  }
+
+  assert.equal(t.rows(0).at(-1).dataset.optionType, "custom");
+  assert.equal(t.rows(0).filter(r => r.dataset.optionType === "custom").length, 1);
+});
+
+test("an empty category shows a note instead of rows", { skip }, async () => {
+  const t = setup();
+
+  await t.type(0, "zzzzqqq");   // custom row only
+  t.tap(chip(t, 0, "CORE"));
+
+  assert.ok(t.dropdown(0).querySelector(".exercise-picker-empty"));
+});
+
+test("choosing a browsed exercise links it, keeps the slot id and closes the list", { skip }, async () => {
+  const t = setup();
+
+  focusIn(t, 0);
+  await settle();
+
+  t.tap(chip(t, 0, "LEGS"));
+  t.tap(t.rows(0).find(r => r.dataset.exerciseId === "hack-squat"));
+
+  assert.equal(t.state.exercises[0].libraryExerciseId, "hack-squat");
+  assert.equal(t.state.exercises[0].id, "slot-1");
+  assert.equal(t.state.exercises[0].notes, "keep me");
+  assert.equal(t.isOpen(0), false);
+  assert.equal(t.wrap(0).querySelector(".exercise-picker-filters"), null, "chips are removed with the list");
+});
+
+test("clearing the box shows the whole library again; blur closes it", { skip }, async () => {
+  const t = setup();
+
+  await t.type(0, "squat");
+  await t.type(0, "");
+
+  assert.equal(t.rows(0).length, (await realLibrary.getAllExercises()).length);
+
+  t.blur(0);
+  assert.equal(t.isOpen(0), false);
+});
+
+test("the list scrolls inside itself (CSS) and chips fit a phone", () => {
+  const css = readFileSync(resolve(here, "..", "style.css"), "utf8");
+
+  assert.match(css, /\.exercise-picker-list\.is-open\s*\{[^}]*max-height:[^}]*overflow-y:\s*auto/s);
+  assert.match(css, /\.exercise-picker-filters\s*\{[^}]*overflow-x:\s*auto/s);
+  assert.match(css, /\.exercise-picker-filter\s*\{[^}]*min-height:\s*36px/s);
+});
+
+test("browse: false keeps the old type-to-search behaviour", { skip }, async () => {
+  const t = setup();
+
+  t.controller.destroy();
+  t.ctx.browse = false;
+  attachExercisePicker(t.list, t.ctx);
+
+  focusIn(t, 0);
+  await settle();
+
+  assert.equal(t.isOpen(0), false);
 });
