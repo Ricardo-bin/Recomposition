@@ -2787,6 +2787,22 @@ textarea {
     padding: 14px;
   }
 
+  /* Specific selectors: the base rules for these come later in the file. */
+  .progress-panel .progress-overview-inner {
+    padding: 12px 14px 4px;
+  }
+
+  .progress-panel .progress-note,
+  .progress-panel .progress-week-list {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .strength-progress-detail .strength-progress-result strong {
+    font-size: 14px;
+    text-align: right;
+  }
+
   .progress-activity-row {
     padding: 13px 14px;
   }
@@ -7221,6 +7237,114 @@ body::before {
   margin-top: 6px;
   color: var(--text-muted);
   font-size: 11px;
+}
+
+/* ==========================================================================
+   PROGRESS INTELLIGENCE (Phase 4). Existing tokens only, so Batman Dark and
+   Linkin Park Light each follow their own palette. No bars, no percentages.
+   ========================================================================== */
+
+.progress-overview-inner {
+  margin: 0;
+  padding: 14px 16px 6px;
+}
+
+.progress-note {
+  padding: 4px 16px 14px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.progress-goal-card {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-accent, rgba(var(--accent-rgb), 0.3));
+  border-radius: 8px;
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+.progress-goal-label {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+.progress-goal-name {
+  margin-top: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.progress-goal-targets {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.progress-week-list {
+  padding: 0 16px 6px;
+}
+
+.progress-week-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.progress-week-row > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.progress-week-workouts {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.progress-week-row strong {
+  min-width: 78px;
+  color: var(--text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-compare-trend {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.progress-session-tag {
+  flex: 1 1 100%;
+  color: var(--accent);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.strength-progress-detail .progress-compare {
+  margin: 12px 0 0;
+}
+
+.strength-progress-detail > .progress-compare-note {
+  margin-top: 10px;
+}
+
+.strength-progress-detail .progress-compare-site {
+  flex-basis: 100px;
+}
+
+.strength-progress-detail .progress-empty {
+  margin-top: 12px;
 }
 
 /* ==========================================================================

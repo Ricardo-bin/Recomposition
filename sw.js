@@ -32,6 +32,7 @@ const SHELL = [
   "history.js",
   "progress.js",
   "progressMetrics.js",
+  "progressInsights.js",
   "goals.js",
   "activeGoal.js",
   "auth.js",

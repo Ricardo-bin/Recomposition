@@ -12,6 +12,9 @@ import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 import * as units from "../units.js";
 import * as progressMetrics from "../progressMetrics.js";
 import * as logStatus from "../workoutLogStatus.js";
+import * as activeGoal from "../activeGoal.js";
+import * as progressInsights from "../progressInsights.js";
+import * as historyView from "../historyView.js";
 
 const JSDOM = await loadJSDOM();
 const skip = JSDOM ? false : SKIP_MESSAGE;
@@ -28,7 +31,7 @@ const log = (id, date, exercises) => ({ id, status: "completed", workoutName: "U
 
 const bench = sets => ({ exerciseId: "e1", name: "Bench Press", sets });
 
-async function openProgress({ logs = [], weights = [], measurements = [], unit = "kg" } = {}) {
+async function openProgress({ logs = [], weights = [], measurements = [], unit = "kg", goals = [] } = {}) {
   const { window } = new JSDOM(`<div id="progress-content"></div>`, { url: "http://localhost/" });
 
   window.alert = () => {};
@@ -39,10 +42,15 @@ async function openProgress({ logs = [], weights = [], measurements = [], unit =
     getWeightHistory: async () => weights,
     getMeasurements: async () => measurements,
     getProfile: async () => ({ unitPreference: unit }),
+    getGoals: async () => goals,
+    toDate: historyView.toDate,
+    findActiveGoal: activeGoal.findActiveGoal,
+    todayKey: activeGoal.todayKey,
     formatWeight: units.formatWeight,
     normalizeWeightUnit: units.normalizeWeightUnit,
     isCompletedLog: logStatus.isCompletedLog,
-    ...progressMetrics
+    ...progressMetrics,
+    ...progressInsights
   };
 
   new Function("document", "window", ...Object.keys(stubs), SOURCE)(window.document, window, ...Object.values(stubs));

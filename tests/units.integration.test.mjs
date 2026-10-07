@@ -12,6 +12,8 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as progressMetrics from "../progressMetrics.js";
+import * as progressInsights from "../progressInsights.js";
+import * as historyView from "../historyView.js";
 import * as units from "../units.js";
 import * as currentWeight from "../currentWeight.js";
 import * as logStatus from "../workoutLogStatus.js";
@@ -50,6 +52,10 @@ function loadModule(file, { html, overrides = {}, auth = { currentUser: { uid: "
       stubs[name] = units[name];
     } else if (from === "./progressMetrics.js") {
       stubs[name] = progressMetrics[name];
+    } else if (from === "./progressInsights.js") {
+      stubs[name] = progressInsights[name];
+    } else if (from === "./historyView.js") {
+      stubs[name] = historyView[name];
     } else if (from === "./workoutLogStatus.js") {
       stubs[name] = logStatus[name];
     } else if (from === "./activeGoal.js") {
