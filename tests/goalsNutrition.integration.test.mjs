@@ -16,6 +16,8 @@ import * as engine from "../nutritionEngine.js";
 import * as currentWeight from "../currentWeight.js";
 import * as activeGoal from "../activeGoal.js";
 import * as logStatus from "../workoutLogStatus.js";
+import * as dashboardModel from "../dashboardModel.js";
+import { dateKey } from "../historyView.js";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 
 const JSDOM = await loadJSDOM();
@@ -595,6 +597,9 @@ async function openDashboard(goals) {
     getGoals: async () => goals,
     findActiveGoal: activeGoal.findActiveGoal,
     isCompletedLog: logStatus.isCompletedLog,
+    buildDashboardModel: dashboardModel.buildDashboardModel,
+    readPending: () => [],
+    dateKey,
     ...Object.fromEntries(Object.keys(units).map(k => [k, units[k]])),
     ...Object.fromEntries(Object.keys(currentWeight).map(k => [k, currentWeight[k]]))
   };
@@ -621,12 +626,14 @@ test("Dashboard shows the ACTIVE goal's saved numbers (manual, recommended and l
   const today = new Date().toLocaleDateString("en-CA");
 
   const manual = await openDashboard([goalDoc({ startDate: "2026-01-01", nutritionSource: "manual" })]);
-  assert.match(manual, /ACTIVE GOAL Cut 2500 kcal 150 g protein 300 g carbs 70 g fat/);
+  // Phase 6: the Dashboard shows kcal + protein only (carbs and fat stay in Goals).
+  assert.match(manual, /CURRENT GOAL Cut 2500 kcal 150 g protein/);
+  assert.doesNotMatch(manual, /carbs|g fat/);
 
   const recommended = await openDashboard([
     goalDoc({ goalType: "Lean Bulk", calories: 2850, protein: 145, carbs: 420, fat: 65, startDate: "2026-01-01", nutritionSource: "recommended", calculatedFromWeightKg: 80 })
   ]);
-  assert.match(recommended, /ACTIVE GOAL Lean Bulk 2850 kcal 145 g protein 420 g carbs 65 g fat/);
+  assert.match(recommended, /CURRENT GOAL Lean Bulk 2850 kcal 145 g protein/);
 
   const legacy = await openDashboard([goalDoc({ startDate: "2026-01-01" })]);
   assert.match(legacy, /2500 kcal/);
@@ -637,7 +644,7 @@ test("Dashboard shows the ACTIVE goal's saved numbers (manual, recommended and l
 test("Dashboard does NOT calculate: it shows the saved goal even if the profile would give different numbers", { skip }, async () => {
   const text = await openDashboard([goalDoc({ goalType: "Bulk", calories: 1234, protein: 111, carbs: 222, fat: 33, startDate: "2026-01-01" })]);
 
-  assert.match(text, /1234 kcal 111 g protein 222 g carbs 33 g fat/);
+  assert.match(text, /1234 kcal 111 g protein/);
   assert.ok(!/2980/.test(text), "the engine's Bulk number must not appear");
 });
 

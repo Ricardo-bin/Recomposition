@@ -43,7 +43,7 @@ export const ASSET_KEYS = Object.freeze(Object.keys(ASSET_FILES));
 // so a replaced image is fetched again instead of being served from a stale
 // cache (Safari/iOS and plain static servers cache aggressively).
 // WHEN YOU REPLACE ANY FILE IN assets/themes/, BUMP THIS VALUE.
-export const ASSET_VERSION = "2";
+export const ASSET_VERSION = "3";
 
 export const withAssetVersion = (url, version = ASSET_VERSION) =>
   typeof url === "string" && url

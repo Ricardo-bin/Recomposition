@@ -36,7 +36,6 @@ import {
   summarizeLog,
   describeExercise,
   previousExercise,
-  alignSets,
   applySetEdits,
   pendingDisplayLogs,
   dateKey,
@@ -148,10 +147,16 @@ function findLog(logId) {
     null;
 }
 
+// Compact "45kg×8" (no spaces) so four sets fit on one phone-width row.
 const formatSetValue = set =>
   set.weight !== "" || set.reps !== ""
-    ? `${set.weight !== "" ? `${set.weight} kg` : "—"} × ${set.reps !== "" ? set.reps : "—"}`
+    ? `${set.weight !== "" ? `${set.weight}kg` : "—"}×${set.reps !== "" ? set.reps : "—"}`
     : "—";
+
+const formatOneRm = value => {
+  const rounded = Math.round(value * 10) / 10;
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}kg`;
+};
 
 // ============================================================================
 // LIST VIEW
@@ -676,71 +681,78 @@ async function ensureRangeLoaded() {
 // DETAIL VIEW
 // ============================================================================
 
-function renderSetRows(sets) {
+// Compact horizontal sets: "45kg×8" with "· R2" directly beneath it, one column
+// per set. Up to 4 sets stay on one row; the font shrinks (never below 12px)
+// to fit, and only when even that cannot fit do the sets wrap naturally.
+function renderSetRows(sets, { showRir = true, muted = false } = {}) {
   if (!sets.length) {
     return `<div class="history-empty-sets">No set data recorded.</div>`;
   }
 
-  return sets.map(set => `
-    <div class="history-detail-set">
-      <span class="history-detail-set-number">SET ${set.number}</span>
-      <span class="history-detail-set-value">${escapeHtml(formatSetValue(set))}</span>
-      <span class="history-detail-set-rir">${set.rir !== "" ? `RIR ${escapeHtml(set.rir)}` : ""}</span>
+  const values = sets.map(formatSetValue);
+  const chars = Math.max(...values.map(value => value.length), 4);
+
+  return `
+    <div class="history-sets${muted ? " history-sets--muted" : ""}" style="--set-n:${sets.length};--set-chars:${chars}">
+      ${sets.map((set, index) => `
+        <div class="history-set" data-set="${set.number}">
+          <span class="history-set-value">${escapeHtml(values[index])}</span>
+          ${showRir ? `<span class="history-set-rir">${set.rir !== "" ? `· R${escapeHtml(set.rir)}` : "&nbsp;"}</span>` : ""}
+        </div>
+      `).join("")}
     </div>
-  `).join("");
+  `;
 }
 
 function formatBestSet(best) {
-  return `${best.weight} kg × ${best.reps} · est. 1RM ${best.estimatedOneRepMax.toFixed(1)} kg`;
+  return `${best.weight}kg×${best.reps} · 1RM ${formatOneRm(best.estimatedOneRepMax)}`;
 }
 
 function renderDetailExercise(exercise, index) {
   const info = describeExercise(exercise);
 
-  const identity = info.isAlternative
+  // Alternative Today: performed exercise is the title; the planned exercise,
+  // the TODAY ONLY marker and the "plan unchanged" explanation share one line.
+  const altLine = info.isAlternative
     ? `
-      <div class="history-alt">
-
-        <div class="history-alt-row">
-          <span class="history-alt-label">PLANNED</span>
-          <span class="history-alt-name">${escapeHtml(info.plannedName || "Planned exercise")}</span>
-        </div>
-
-        <div class="history-alt-row">
-          <span class="history-alt-label">PERFORMED</span>
-          <span class="history-alt-name">${escapeHtml(info.name)}</span>
-        </div>
-
-        <div class="history-alt-note">
-          TODAY ONLY — your saved plan was not changed.
-        </div>
-
+      <div class="history-alt-line">
+        <span class="history-alt-tag">TODAY ONLY</span>
+        <span class="history-alt-names">${escapeHtml(info.plannedName || "Planned exercise")} → ${escapeHtml(info.name)}</span>
+        <span class="history-alt-note">Saved plan not changed.</span>
       </div>
     `
-    : `<h3 class="history-detail-name">${escapeHtml(info.name)}</h3>`;
+    : "";
 
   const target = [
-    info.target ? `TARGET ${info.target}` : "",
+    info.target,
     info.targetRir ? `RIR ${info.targetRir}` : ""
   ].filter(Boolean).join(" · ");
 
   return `
-    <article class="history-detail-exercise" data-detail-exercise="${index}">
+    <article class="history-detail-exercise${info.isAlternative ? " history-detail-exercise--alt" : ""}" data-detail-exercise="${index}">
 
-      ${identity}
+      <header class="history-ex-head">
 
-      ${target ? `<div class="history-target-line">${escapeHtml(target)}</div>` : ""}
+        <h3 class="history-detail-name">${escapeHtml(info.name)}</h3>
 
-      <div class="history-detail-sets">
-        ${renderSetRows(info.sets)}
-      </div>
+        ${altLine}
 
-      ${info.best ? `<div class="history-best">BEST SET ${escapeHtml(formatBestSet(info.best))}</div>` : ""}
+        ${target ? `<div class="history-target-line">${escapeHtml(target)}</div>` : ""}
 
-      ${info.notes ? `<div class="history-detail-notes">${escapeHtml(info.notes)}</div>` : ""}
+      </header>
 
-      <div class="history-compare" data-compare="${index}">
-        <div class="history-compare-status">Looking for the previous session…</div>
+      ${renderSetRows(info.sets)}
+
+      <div class="history-ex-foot">
+
+        ${info.best ? `<div class="history-best">BEST ${escapeHtml(formatBestSet(info.best))}</div>` : ""}
+
+        ${info.notes ? `<div class="history-detail-notes">${escapeHtml(info.notes)}</div>` : ""}
+
+        <div class="history-compare" data-compare="${index}">
+          <div class="history-compare-status">Looking for the previous session…</div>
+        </div>
+
       </div>
 
     </article>
@@ -748,46 +760,19 @@ function renderDetailExercise(exercise, index) {
 }
 
 function renderComparison(currentSets, previousLog, previousEx) {
-  const currentDetail = describeExercise({ sets: currentSets });
   const previousDetail = describeExercise(previousEx);
-
-  const rows = alignSets(currentDetail.sets, previousDetail.sets);
-
-  const cell = set => (set ? escapeHtml(formatSetValue(set)) : "—");
-
-  const currentBest = currentDetail.best;
   const previousBest = previousDetail.best;
+  const date = formatCardDate(previousLog.date).split(" · ")[0];
 
   return `
     <div class="history-compare-head">
-      PREVIOUS SESSION · ${escapeHtml(formatCardDate(previousLog.date).split(" · ")[0])}
+      <span class="history-compare-label">PREVIOUS · ${escapeHtml(date)}</span>
+      ${previousBest ? `<span class="history-compare-best">${escapeHtml(formatBestSet(previousBest))}</span>` : ""}
     </div>
 
-    <div class="history-compare-table">
+    ${renderSetRows(previousDetail.sets, { showRir: false, muted: true })}
 
-      <div class="history-compare-row history-compare-heading">
-        <span>SET</span>
-        <span>CURRENT</span>
-        <span>PREVIOUS</span>
-      </div>
-
-      ${rows.map(row => `
-        <div class="history-compare-row">
-          <span>${row.number}</span>
-          <span>${cell(row.current)}</span>
-          <span>${cell(row.previous)}</span>
-        </div>
-      `).join("")}
-
-    </div>
-
-    ${currentBest && previousBest ? `
-      <div class="history-compare-note">
-        Best set: ${escapeHtml(formatBestSet(currentBest))}
-        vs ${escapeHtml(formatBestSet(previousBest))}.
-        A performance comparison only.
-      </div>
-    ` : ""}
+    <div class="history-compare-note">Performance comparison only.</div>
   `;
 }
 
@@ -1279,6 +1264,24 @@ async function deleteWorkout(logId, logs) {
 // LOAD HISTORY
 // ============================================================================
 
+// Dashboard deep link: "open this workout once the list has loaded". The request
+// expires quickly so a stale one can never open something later.
+let openRequest = null;
+
+function requestOpenWorkout(logId) {
+  openRequest = { logId, at: Date.now() };
+}
+
+function consumeOpenRequest() {
+  const request = openRequest;
+
+  openRequest = null;
+
+  if (request && Date.now() - request.at < 15000 && findLog(request.logId)) {
+    openWorkoutDetail(request.logId);
+  }
+}
+
 export async function loadHistory() {
   const container =
     getHistoryContainer();
@@ -1315,11 +1318,13 @@ export async function loadHistory() {
 
     if (!historyLogs.length) {
       renderEmptyHistory();
+      consumeOpenRequest();
       return;
     }
 
     renderHistoryShell();
     refreshHistoryResults();
+    consumeOpenRequest();
 
     await ensureRangeLoaded();
 
@@ -1370,7 +1375,8 @@ window.addEventListener(
 // ============================================================================
 
 window.RecompositionHistory = {
-  loadHistory
+  loadHistory,
+  requestOpenWorkout
 };
 
 // ============================================================================
@@ -1381,6 +1387,7 @@ window.addEventListener("recomposition-signed-out", () => {
   historyRequestId += 1;        // a load still in flight must not render later
   detailToken += 1;
 
+  openRequest = null;
   historyLogs = [];
   historyCursor = null;
   historyHasMore = false;

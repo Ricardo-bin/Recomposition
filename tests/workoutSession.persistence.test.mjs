@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 import * as alternativeToday from "../alternativeToday.js";
 import * as pendingWorkouts from "../pendingWorkouts.js";
+import * as exerciseLogging from "../exerciseLogging.js";
 
 const JSDOM = await loadJSDOM();
 const skip = JSDOM ? false : SKIP_MESSAGE;
@@ -69,6 +70,7 @@ function boot(world, uid = "userA") {
   const stubs = {
     ...alternativeToday,
     ...pendingWorkouts,
+    ...exerciseLogging,
     getWorkoutPlan: async id => PLANS[id] ?? null,
     getPreviousWorkoutLog: async () => null,
     getWorkoutLogs: async () => world.logs.slice(),

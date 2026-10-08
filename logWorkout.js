@@ -21,6 +21,18 @@ import {
 import { auth } from "./firebase.js";
 
 import {
+  LOG_STATUS,
+  exerciseState,
+  validateExercise,
+  summarizeSession,
+  summarizeLoggedExercise,
+  planFinish,
+  needsFinishConfirmation,
+  buildPerformedSession,
+  finishQuestion
+} from "./exerciseLogging.js";
+
+import {
   applyAlternative,
   buildLogSession,
   getPerformedExerciseId,
@@ -44,6 +56,10 @@ import {
 
 let currentWorkoutPlan = null;
 let currentWorkoutSession = null;
+
+// Which not-yet-saved / being-edited cards are open. Screen state only: it is
+// never stored. (An exercise with typed sets is always shown open.)
+const expandedExercises = new Set();
 
 
 // ============================================================================
@@ -384,7 +400,7 @@ async function renderWorkoutSession() {
 
     </div>
 
-    <div class="workout-session-status">
+    <div class="workout-session-status" id="workout-session-status">
       Session in progress
     </div>
 
@@ -396,12 +412,14 @@ async function renderWorkoutSession() {
 
     <div class="workout-session-footer">
 
+      <div id="finish-confirm" class="finish-confirm" hidden></div>
+
       <button
         type="button"
         class="workout-primary-button"
         id="complete-workout-button"
       >
-        Complete Workout
+        Finish Workout
       </button>
 
     </div>
@@ -422,6 +440,7 @@ async function renderWorkoutSession() {
   }
 
   attachSessionEvents();
+  updateSessionStatus();
 }
 
 
@@ -454,97 +473,320 @@ function renderExercises() {
 
   return currentWorkoutSession.exercises
     .map(
-      (exercise, exerciseIndex) => {
-
-        return `
-          <article
-            class="workout-session-exercise"
-            data-session-exercise="${exerciseIndex}"
-          >
-
-            <div
-              class="workout-session-exercise-header"
-            >
-
-              <div>
-
-                <span
-                  class="workout-session-exercise-number"
-                >
-                  ${String(
-                    exerciseIndex + 1
-                  ).padStart(2, "0")}
-                </span>
-
-                <h3>
-                  ${escapeHtml(
-                    exercise.name
-                  )}
-                </h3>
-
-              </div>
-
-              <div
-                class="workout-session-target"
-              >
-                ${exercise.targetSets}
-                sets
-                ·
-                ${exercise.repMin}-${exercise.repMax}
-                reps
-                ·
-                RIR ${exercise.targetRIR}
-              </div>
-
-            </div>
-
-            ${renderAlternativeToday(
-              exercise,
-              exerciseIndex
-            )}
-
-            ${renderPreviousPerformance(
-              exercise
-            )}
-
-            <div
-  class="workout-session-sets"
->
-
-  ${renderSetHeader()}
-
-  ${exercise.sets
-    .map(
-      (set, setIndex) =>
-        renderSetRow(
-          exercise,
-          exerciseIndex,
-          set,
-          setIndex
-        )
-    )
-    .join("")}
-
-  <div class="workout-set-actions">
-
-    <button
-      type="button"
-      class="workout-small-button"
-      data-add-set="${exerciseIndex}"
-      ${exercise.sets.length >= 20 ? "disabled" : ""}
-    >
-      + Add Set
-    </button>
-
-  </div>
-
-</div>
-
-          </article>
-        `;
-      }
+      (exercise, exerciseIndex) =>
+        renderExerciseCard(exercise, exerciseIndex)
     )
     .join("");
+}
+
+
+const STATE_BADGES = {
+  "not-started": ["", ""],
+  "in-progress": ["exercise-state--progress", "IN PROGRESS"],
+  "logged": ["exercise-state--logged", "✓ LOGGED"],
+  "skipped": ["exercise-state--skipped", "SKIPPED TODAY"]
+};
+
+function stateBadgeHtml(state) {
+  const [modifier, label] = STATE_BADGES[state] ?? STATE_BADGES["not-started"];
+
+  return `<span class="exercise-state ${modifier}" data-state-badge ${label ? "" : "hidden"}>${label}</span>`;
+}
+
+// While typing, the badge follows the card's state without a re-render (a
+// re-render would drop the keyboard).
+function refreshCardState(exerciseIndex) {
+  const exercise = exerciseAt(exerciseIndex);
+  const card = document.querySelector(`[data-session-exercise="${exerciseIndex}"]`);
+
+  if (!exercise || !card) return;
+
+  const state = exerciseState(exercise);
+
+  if (card.dataset.exerciseState === state) return;
+
+  card.dataset.exerciseState = state;
+  card.className = `workout-session-exercise workout-session-exercise--${state}`;
+
+  const holder = card.querySelector("[data-state-badge]");
+
+  if (holder) {
+    holder.outerHTML = stateBadgeHtml(state);
+  }
+}
+
+// One card per exercise. The set inputs are always in the page (so nothing a
+// user typed is ever lost by closing a card); a closed card just hides them.
+function renderExerciseCard(exercise, exerciseIndex) {
+
+  const state = exerciseState(exercise);
+
+  const open =
+    state === "in-progress" ||
+    (
+      expandedExercises.has(exerciseIndex) &&
+      state !== "skipped"
+    );
+
+  const badge = stateBadgeHtml(state);
+
+  const summary =
+    state === "logged"
+      ? summarizeLoggedExercise(exercise)
+      : "";
+
+  const hasAlt = hasAlternative(exercise);
+
+  let actions;
+
+  if (state === "skipped") {
+
+    actions = `
+      <button
+        type="button"
+        class="workout-small-button"
+        data-unskip-exercise="${exerciseIndex}"
+      >
+        Undo Skip
+      </button>
+    `;
+
+  } else if (open) {
+
+    actions = `
+      <button
+        type="button"
+        class="exercise-action exercise-action--primary"
+        data-save-exercise="${exerciseIndex}"
+      >
+        Save Exercise
+      </button>
+
+      <button
+        type="button"
+        class="exercise-action"
+        data-skip-exercise="${exerciseIndex}"
+      >
+        Skip Today
+      </button>
+    `;
+
+  } else if (state === "logged") {
+
+    actions = `
+      <button
+        type="button"
+        class="exercise-action"
+        data-edit-exercise="${exerciseIndex}"
+      >
+        Edit
+      </button>
+    `;
+
+  } else {
+
+    actions = `
+      <button
+        type="button"
+        class="exercise-action exercise-action--primary"
+        data-log-exercise="${exerciseIndex}"
+      >
+        Log Exercise
+      </button>
+
+      <button
+        type="button"
+        class="exercise-action"
+        data-skip-exercise="${exerciseIndex}"
+      >
+        Skip Today
+      </button>
+    `;
+
+  }
+
+  return `
+    <article
+      class="workout-session-exercise workout-session-exercise--${state}"
+      data-session-exercise="${exerciseIndex}"
+      data-exercise-state="${state}"
+    >
+
+      <div class="workout-session-exercise-header">
+
+        <div>
+
+          <span class="workout-session-exercise-number">
+            ${String(exerciseIndex + 1).padStart(2, "0")}
+            ${badge}
+          </span>
+
+          <h3>
+            ${escapeHtml(exercise.name)}
+          </h3>
+
+          ${hasAlt && !open ? `<span class="exercise-alt-tag">TODAY ONLY · ALTERNATIVE</span>` : ""}
+
+        </div>
+
+        <div class="workout-session-target">
+          ${exercise.targetSets}
+          sets
+          ·
+          ${exercise.repMin}-${exercise.repMax}
+          reps
+          ·
+          RIR ${exercise.targetRIR}
+        </div>
+
+        ${summary ? `<div class="exercise-summary">${escapeHtml(summary)}</div>` : ""}
+
+      </div>
+
+      <div
+        class="workout-session-body"
+        ${open ? "" : "hidden"}
+      >
+
+        ${renderAlternativeToday(
+          exercise,
+          exerciseIndex
+        )}
+
+        ${renderPreviousPerformance(
+          exercise
+        )}
+
+        <div class="workout-session-sets">
+
+          ${renderSetHeader()}
+
+          ${exercise.sets
+            .map(
+              (set, setIndex) =>
+                renderSetRow(
+                  exercise,
+                  exerciseIndex,
+                  set,
+                  setIndex
+                )
+            )
+            .join("")}
+
+          <div class="workout-set-actions">
+
+            <button
+              type="button"
+              class="workout-small-button"
+              data-add-set="${exerciseIndex}"
+              ${exercise.sets.length >= 20 ? "disabled" : ""}
+            >
+              + Add Set
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="exercise-actions">
+        ${actions}
+      </div>
+
+    </article>
+  `;
+}
+
+
+// "1 of 4 exercises logged" under the header; updated on every render.
+function updateSessionStatus() {
+
+  const element =
+    document.getElementById("workout-session-status");
+
+  if (!element || !currentWorkoutSession) {
+    return;
+  }
+
+  const { logged, skipped, total } =
+    summarizeSession(currentWorkoutSession);
+
+  element.textContent =
+    `Session in progress · ${logged} of ${total} logged` +
+    (skipped ? ` · ${skipped} skipped` : "");
+}
+
+
+// ============================================================================
+// EXERCISE ACTIONS — log / save / skip (SESSION only; the PLAN is never read
+// for writing here)
+// ============================================================================
+
+function exerciseAt(index) {
+  return currentWorkoutSession?.exercises?.[index] ?? null;
+}
+
+function openExercise(index) {
+  if (!exerciseAt(index)) return;
+
+  expandedExercises.add(index);
+  rerenderSessionExercises();
+
+  document
+    .querySelector(
+      `[data-exercise-index="${index}"][data-set-index="0"][data-set-field="weight"]`
+    )
+    ?.focus();
+}
+
+function saveExercise(index) {
+
+  const exercise = exerciseAt(index);
+
+  if (!exercise) return;
+
+  const check = validateExercise(exercise);
+
+  if (!check.valid) {
+    window.alert(check.message);
+    return;
+  }
+
+  exercise.logStatus = LOG_STATUS.LOGGED;
+
+  expandedExercises.delete(index);
+
+  persistActiveSession();
+  rerenderSessionExercises();
+}
+
+function skipExercise(index) {
+
+  const exercise = exerciseAt(index);
+
+  if (!exercise) return;
+
+  exercise.logStatus = LOG_STATUS.SKIPPED;
+
+  expandedExercises.delete(index);
+
+  persistActiveSession();
+  rerenderSessionExercises();
+}
+
+function unskipExercise(index) {
+
+  const exercise = exerciseAt(index);
+
+  if (!exercise) return;
+
+  delete exercise.logStatus;
+
+  expandedExercises.add(index);
+
+  persistActiveSession();
+  rerenderSessionExercises();
 }
 
 
@@ -970,6 +1212,22 @@ function attachSessionEvents() {
 
   }
 
+  const bindAction = (attribute, handler) =>
+    document
+      .querySelectorAll(`[${attribute}]`)
+      .forEach(button => {
+        button.addEventListener(
+          "click",
+          () => handler(Number(button.getAttribute(attribute)))
+        );
+      });
+
+  bindAction("data-log-exercise", openExercise);
+  bindAction("data-edit-exercise", openExercise);
+  bindAction("data-save-exercise", saveExercise);
+  bindAction("data-skip-exercise", skipExercise);
+  bindAction("data-unskip-exercise", unskipExercise);
+
     // Listen for changes to workout set inputs
   document
     .querySelectorAll(".workout-set-input")
@@ -1123,214 +1381,11 @@ function handleSetInput(event) {
 
   persistActiveSession();
 
+  refreshCardState(exerciseIndex);
+
 
 }
 
-
-// ============================================================================
-// VALIDATE WORKOUT SESSION
-// ============================================================================
-
-function validateWorkoutSession() {
-
-  if (!currentWorkoutSession) {
-    return {
-      valid: false,
-      message: "No active workout session."
-    };
-  }
-
-
-  if (
-    !Array.isArray(
-      currentWorkoutSession.exercises
-    ) ||
-    currentWorkoutSession.exercises.length === 0
-  ) {
-    return {
-      valid: false,
-      message: "This workout has no exercises."
-    };
-  }
-
-
-  for (
-    let exerciseIndex = 0;
-    exerciseIndex <
-    currentWorkoutSession.exercises.length;
-    exerciseIndex++
-  ) {
-
-    const exercise =
-      currentWorkoutSession
-        .exercises[exerciseIndex];
-
-
-    if (
-      !Array.isArray(exercise.sets) ||
-      exercise.sets.length === 0
-    ) {
-
-      return {
-        valid: false,
-        message:
-          `${exercise.name} must have at least one set.`
-      };
-    }
-
-
-    // Check whether the exercise has at least
-    // one completed set.
-    const hasCompletedSet =
-      exercise.sets.some(
-        set =>
-          set.weight !== "" &&
-          set.weight !== null &&
-          set.reps !== "" &&
-          set.reps !== null
-      );
-
-
-    if (!hasCompletedSet) {
-
-      return {
-        valid: false,
-        message:
-          `Please complete at least one set of ${exercise.name}.`
-      };
-    }
-
-
-    for (
-      let setIndex = 0;
-      setIndex < exercise.sets.length;
-      setIndex++
-    ) {
-
-      const set =
-        exercise.sets[setIndex];
-
-
-      const weightEmpty =
-        set.weight === "" ||
-        set.weight === null ||
-        set.weight === undefined;
-
-
-      const repsEmpty =
-        set.reps === "" ||
-        set.reps === null ||
-        set.reps === undefined;
-
-
-      const rirEmpty =
-        set.rir === "" ||
-        set.rir === null ||
-        set.rir === undefined;
-
-
-      // Completely empty set:
-      // This is allowed as long as it is not
-      // between completed sets.
-      if (
-        weightEmpty &&
-        repsEmpty &&
-        rirEmpty
-      ) {
-        continue;
-      }
-
-
-      // Weight is required if the set has data.
-      if (weightEmpty) {
-
-        return {
-          valid: false,
-          message:
-            `Please enter the weight for Set ${setIndex + 1} of ${exercise.name}.`
-        };
-      }
-
-
-      // Reps are required.
-      if (repsEmpty) {
-
-        return {
-          valid: false,
-          message:
-            `Please enter the reps for Set ${setIndex + 1} of ${exercise.name}.`
-        };
-      }
-
-
-      const weight =
-        Number(set.weight);
-
-
-      const reps =
-        Number(set.reps);
-
-
-      if (
-        !Number.isFinite(weight) ||
-        weight < 0
-      ) {
-
-        return {
-          valid: false,
-          message:
-            `Weight for Set ${setIndex + 1} of ${exercise.name} must be 0 or greater.`
-        };
-      }
-
-
-      if (
-        !Number.isInteger(reps) ||
-        reps < 1 ||
-        reps > 100
-      ) {
-
-        return {
-          valid: false,
-          message:
-            `Reps for Set ${setIndex + 1} of ${exercise.name} must be between 1 and 100.`
-        };
-      }
-
-
-      // RIR is optional.
-      // But if entered, it must be 0–5.
-      if (!rirEmpty) {
-
-        const rir =
-          Number(set.rir);
-
-
-        if (
-          !Number.isInteger(rir) ||
-          rir < 0 ||
-          rir > 5
-        ) {
-
-          return {
-            valid: false,
-            message:
-              `RIR for Set ${setIndex + 1} of ${exercise.name} must be between 0 and 5.`
-          };
-        }
-
-      }
-
-    }
-
-  }
-
-
-  return {
-    valid: true,
-    message: ""
-  };
-}
 
 // ============================================================================
 // ADD SET
@@ -1427,6 +1482,7 @@ function rerenderSessionExercises(
     renderExercises();
 
   attachSessionEvents();
+  updateSessionStatus();
 
   if (
     focusExerciseIndex !== null &&
@@ -1578,6 +1634,9 @@ async function applyAlternativeToday(
   session.exercises[exerciseIndex] =
     result.exercise;
 
+  // A different exercise now: it has to be saved (or skipped) again.
+  delete session.exercises[exerciseIndex].logStatus;
+
   persistActiveSession();
 
   await loadPreviousForExercise(
@@ -1620,6 +1679,8 @@ async function restoreOriginalExercise(
 
   currentWorkoutSession.exercises[exerciseIndex] =
     restoreOriginal(exercise);
+
+  delete currentWorkoutSession.exercises[exerciseIndex].logStatus;
 
   persistActiveSession();
 
@@ -2319,6 +2380,8 @@ function closeWorkoutSession({ keepStored = false } = {}) {
 
   closeAlternativeSheet();
 
+  expandedExercises.clear();
+
   setSessionViewActive(false);
 
   currentWorkoutPlan =
@@ -2379,27 +2442,86 @@ function closeWorkoutSession({ keepStored = false } = {}) {
 
 let completionInFlight = false;
 
-async function handleCompleteWorkout() {
+function hideFinishConfirm() {
+  const panel = document.getElementById("finish-confirm");
+
+  if (panel) {
+    panel.hidden = true;
+    panel.innerHTML = "";
+  }
+
+  const finishButton = document.getElementById("complete-workout-button");
+
+  if (finishButton) finishButton.hidden = false;
+}
+
+// FINISH WORKOUT never demands that every planned exercise is done: it saves
+// what was actually performed. With unfinished exercises it asks first.
+async function handleCompleteWorkout({ confirmed = false } = {}) {
 
   // A double tap (or a second trigger) must not complete the workout twice.
   if (!currentWorkoutSession || completionInFlight) {
     return;
   }
 
-
-  const validation =
-    validateWorkoutSession();
-
-
-  if (!validation.valid) {
-
-    window.alert(
-      validation.message
-    );
-
+  if (
+    !Array.isArray(currentWorkoutSession.exercises) ||
+    currentWorkoutSession.exercises.length === 0
+  ) {
+    window.alert("This workout has no exercises.");
     return;
   }
 
+  const plan = planFinish(currentWorkoutSession);
+
+  if (!plan.ok) {
+    window.alert(plan.message);
+    return;
+  }
+
+  if (needsFinishConfirmation(plan) && !confirmed) {
+
+    const panel = document.getElementById("finish-confirm");
+
+    if (panel) {
+
+      panel.hidden = false;
+
+      panel.innerHTML = `
+        <p class="finish-confirm-text">${escapeHtml(finishQuestion(plan))}</p>
+
+        <div class="finish-confirm-actions">
+          <button type="button" class="exercise-action" id="finish-cancel">Cancel</button>
+          <button type="button" class="exercise-action exercise-action--primary" id="finish-confirm-yes">Finish</button>
+        </div>
+      `;
+
+      document.getElementById("finish-cancel")
+        ?.addEventListener("click", hideFinishConfirm);
+
+      document.getElementById("finish-confirm-yes")
+        ?.addEventListener("click", () => handleCompleteWorkout({ confirmed: true }));
+
+      document.getElementById("finish-confirm-yes")?.focus();
+
+      // The question replaces the Finish button while it is open, so both of
+      // its buttons sit clear of the bottom navigation.
+      const finishButton = document.getElementById("complete-workout-button");
+
+      if (finishButton) finishButton.hidden = true;
+
+      panel.scrollIntoView?.({ block: "end" });
+
+      return;
+    }
+
+    // No panel to show: fall back to the browser's own question.
+    if (!window.confirm(finishQuestion(plan))) {
+      return;
+    }
+  }
+
+  hideFinishConfirm();
 
   const completeButton =
     document.getElementById(
@@ -2435,7 +2557,9 @@ async function handleCompleteWorkout() {
     const log =
       toStorableLog(
         buildLogSession(
-          currentWorkoutSession
+          buildPerformedSession(
+            currentWorkoutSession
+          )
         )
       );
 
@@ -2752,6 +2876,8 @@ export async function openWorkoutSession(
       plan;
 
 
+    expandedExercises.clear();
+
     currentWorkoutSession =
       createWorkoutSession(
         plan
@@ -2928,7 +3054,12 @@ async function restoreActiveSession(uid) {
   }
 
   currentWorkoutPlan = null;
+  expandedExercises.clear();
   currentWorkoutSession = session;
+
+  // Lets the Dashboard (which may have rendered before this restore finished)
+  // show the unfinished workout. Nothing else listens or changes.
+  window.dispatchEvent(new CustomEvent("recomposition-session-changed"));
 
   showActiveSessionView();
   await renderWorkoutSession();
@@ -2957,6 +3088,35 @@ onAuthStateChanged(auth, async user => {
 // GLOBAL ACCESS
 // ============================================================================
 
+// Read-only summary of the workout in progress (null when there is none).
+// The Dashboard uses it to offer RESUME instead of START. It exposes no state
+// that can be changed.
+function getActiveSessionSummary() {
+  if (!currentWorkoutSession) {
+    return null;
+  }
+
+  const exercises = Array.isArray(currentWorkoutSession.exercises)
+    ? currentWorkoutSession.exercises
+    : [];
+
+  const setsLogged = exercises.reduce(
+    (total, exercise) =>
+      total +
+      (Array.isArray(exercise?.sets) ? exercise.sets : []).filter(
+        set => String(set?.weight ?? "") !== "" || String(set?.reps ?? "") !== ""
+      ).length,
+    0
+  );
+
+  return {
+    planId: currentWorkoutSession.planId ?? null,
+    name: currentWorkoutSession.workoutName || "",
+    setsLogged
+  };
+}
+
 window.RecompositionWorkoutLogger = {
+  getActiveSessionSummary,
   openWorkoutSession
 };

@@ -89,6 +89,14 @@ function loadSectionData(sectionName) {
     return;
   }
 
+  if (sectionName === "dashboard") {
+
+    // Returning to the Dashboard re-renders it quietly (its own guard skips a
+    // render that just happened). Its first render after sign-in is its own.
+    window.RecompositionDashboard?.refresh?.();
+
+  }
+
   if (sectionName === "history") {
 
     if (
@@ -222,7 +230,8 @@ onAuthStateChanged(auth, user => {
     console.warn("Could not read current navigation section:", error);
   }
 
-  if (sections.includes(currentSection)) {
+  // The Dashboard renders itself when the user signs in.
+  if (sections.includes(currentSection) && currentSection !== "dashboard") {
     loadSectionData(currentSection);
   }
 });

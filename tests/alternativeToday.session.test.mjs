@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { loadJSDOM, SKIP_MESSAGE, settle } from "./_jsdom.mjs";
 import * as alternativeToday from "../alternativeToday.js";
 import * as pendingWorkouts from "../pendingWorkouts.js";
+import * as exerciseLogging from "../exerciseLogging.js";
 import * as pickerUi from "../exercisePickerUI.js";
 import * as smartAlternatives from "../smartAlternatives.js";
 import * as pickerHelpers from "../exercisePicker.js";
@@ -99,6 +100,7 @@ function boot(world, { uid = "userA", library, pickerFails = false } = {}) {
   const stubs = {
     ...alternativeToday,
     ...pendingWorkouts,
+    ...exerciseLogging,
     getWorkoutPlan: async id => (world.plans[id] ? structuredClone(world.plans[id]) : null),
     getPreviousWorkoutLog: async (planId, exerciseId) => {
       world.previousCalls.push({ planId, exerciseId });

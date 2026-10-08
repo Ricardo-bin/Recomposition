@@ -9,7 +9,7 @@
 // Bump CACHE_VERSION to ship a new shell; old caches are deleted on activate.
 // ============================================================================
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE = `recomposition-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -26,6 +26,7 @@ const SHELL = [
   "workout.js",
   "workoutPlanEditor.js",
   "logWorkout.js",
+  "exerciseLogging.js",
   "pendingWorkouts.js",
   "workoutLogStatus.js",
   "historyView.js",
@@ -33,6 +34,7 @@ const SHELL = [
   "progress.js",
   "progressMetrics.js",
   "progressInsights.js",
+  "dashboardModel.js",
   "goals.js",
   "activeGoal.js",
   "auth.js",
