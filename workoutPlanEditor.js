@@ -1398,11 +1398,11 @@ function renderExerciseCard(
 
           <div class="exercise-builder-summary">
 
-            ${exercise.sets || 0} sets
+            ${escapeHTML(exercise.sets || 0)} sets
             ·
-            ${exercise.repMin || 0}–${exercise.repMax || 0} reps
+            ${escapeHTML(exercise.repMin || 0)}–${escapeHTML(exercise.repMax || 0)} reps
             ·
-            RIR ${exercise.targetRIR ?? 2}
+            RIR ${escapeHTML(exercise.targetRIR ?? 2)}
 
           </div>
 

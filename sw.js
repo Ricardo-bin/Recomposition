@@ -9,7 +9,7 @@
 // Bump CACHE_VERSION to ship a new shell; old caches are deleted on activate.
 // ============================================================================
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE = `recomposition-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -27,6 +27,8 @@ const SHELL = [
   "workoutPlanEditor.js",
   "logWorkout.js",
   "exerciseLogging.js",
+  "sheetjsLoader.js",
+  "authPolicy.js",
   "pendingWorkouts.js",
   "workoutLogStatus.js",
   "historyView.js",
@@ -108,7 +110,17 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
 
-    if (response && response.ok) {
+    // Only own, public static files are kept. Anything the server marks
+    // private / no-store (or that is not a plain same-origin response) is
+    // passed through and never stored.
+    const cacheControl = response?.headers?.get("Cache-Control") || "";
+
+    if (
+      response &&
+      response.ok &&
+      response.type === "basic" &&
+      !/no-store|private/i.test(cacheControl)
+    ) {
       cache.put(request, response.clone());
     }
 

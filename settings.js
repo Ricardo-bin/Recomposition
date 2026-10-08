@@ -2,6 +2,8 @@
 // RECOMPOSITION — SETTINGS
 // ============================================================================
 
+import { loadSheetJs } from "./sheetjsLoader.js";
+import { isAcceptableNewPassword, PASSWORD_TOO_SHORT_MESSAGE } from "./authPolicy.js";
 import {
   getProfile,
   getWorkoutPlans,
@@ -805,6 +807,9 @@ initializeThemeSwitch();
         excelButton.textContent =
           "Preparing Excel...";
 
+        // Third-party library: fetched only now, never at page load.
+        await loadSheetJs();
+
 
         const [
           workoutPlans,
@@ -1281,7 +1286,9 @@ initializeThemeSwitch();
           "Download Excel Workbook";
 
         alert(
-          "Could not create Excel workbook."
+          error?.message?.startsWith("Could not load the Excel library")
+            ? error.message
+            : "Could not create Excel workbook."
         );
 
       }
@@ -1395,8 +1402,8 @@ async function renderAccountSettings() {
 
       if (!password) return;
 
-      if (password.length < 6) {
-        alert("Password must be at least 6 characters.");
+      if (!isAcceptableNewPassword(password)) {
+        alert(PASSWORD_TOO_SHORT_MESSAGE);
         return;
       }
 

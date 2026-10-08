@@ -630,13 +630,13 @@ function renderExerciseCard(exercise, exerciseIndex) {
         </div>
 
         <div class="workout-session-target">
-          ${exercise.targetSets}
+          ${escapeHtml(exercise.targetSets)}
           sets
           ·
-          ${exercise.repMin}-${exercise.repMax}
+          ${escapeHtml(exercise.repMin)}-${escapeHtml(exercise.repMax)}
           reps
           ·
-          RIR ${exercise.targetRIR}
+          RIR ${escapeHtml(exercise.targetRIR)}
         </div>
 
         ${summary ? `<div class="exercise-summary">${escapeHtml(summary)}</div>` : ""}

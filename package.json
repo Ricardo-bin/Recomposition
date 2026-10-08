@@ -1,0 +1,20 @@
+{
+  "name": "recomposition",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Recomposition - workout, nutrition and body recomposition tracker (static PWA, Firebase backend).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:rules": "npx --yes firebase-tools@13.29.1 emulators:exec --only firestore --project demo-recomposition \"node --test tests/rules/*.mjs\"",
+    "audit": "npm audit --omit=optional"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "10.11.0",
+    "jsdom": "^29.1.1"
+  }
+}

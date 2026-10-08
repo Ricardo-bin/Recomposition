@@ -3,6 +3,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
+  isAcceptableNewPassword,
+  PASSWORD_TOO_SHORT_MESSAGE,
+  LOGIN_FAILED_MESSAGE
+} from "./authPolicy.js";
+import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -180,16 +185,11 @@ btnLogin.addEventListener("click", async () => {
     console.error("Login error:", error);
 
     switch (error.code) {
+      // Same wording for every "credentials do not match" case.
       case "auth/invalid-credential":
-        showMessage("Incorrect email or password.", true);
-        break;
-
       case "auth/user-not-found":
-        showMessage("No account was found with this email.", true);
-        break;
-
       case "auth/wrong-password":
-        showMessage("Incorrect password.", true);
+        showMessage(LOGIN_FAILED_MESSAGE, true);
         break;
 
       case "auth/invalid-email":
@@ -331,9 +331,9 @@ btnRegister.addEventListener("click", async () => {
     return;
   }
 
-  if (password.length < 6) {
+  if (!isAcceptableNewPassword(password)) {
     showMessage(
-      "Password must be at least 6 characters.",
+      PASSWORD_TOO_SHORT_MESSAGE,
       true
     );
     return;
