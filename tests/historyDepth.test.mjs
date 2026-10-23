@@ -29,7 +29,6 @@ import {
   plannedInfo,
   describeExercise,
   formatTarget,
-  previousExercise,
   alignSets,
   applySetEdits,
   pendingDisplayLogs
@@ -38,6 +37,7 @@ import {
 import { applyLibrarySelection } from "../exercisePicker.js";
 import { getBestSet, estimateOneRepMax } from "../progressMetrics.js";
 import { enqueuePending, readPending } from "../pendingWorkouts.js";
+import { previousExerciseIn } from "../previousSession.js";
 import { loadDataLayer } from "./helpers/dataLayer.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -238,19 +238,19 @@ test("Alternative Today never changes the exercise key used for filtering the sa
 // 7  PREVIOUS-SESSION COMPARISON  (reuses the data layer's findPreviousLogs)
 // ============================================================================
 
-test("previous session: the newest earlier log of the same plan + exercise", () => {
+test("previous session: the newest earlier log of the same exercise", () => {
   const layer = loadDataLayer({ currentUid: "uA" });
   const sorted = filterLogs(LOGS, {}, NOW);                  // newest first, like History
 
   const previous = layer.findPreviousLogs(
-    sorted.filter(item => item.id !== "L1"), "plan-upper", "slot-bench", LOGS[0].date
+    sorted.filter(item => item.id !== "L1"), bench([]), LOGS[0].date
   )[0];
 
   assert.equal(previous.id, "L4");
 
   const rows = alignSets(
     describeExercise(LOGS[0].exercises[0]).sets,
-    describeExercise(previousExercise(previous, "slot-bench")).sets
+    describeExercise(previousExerciseIn(previous, bench([]))).sets
   );
 
   assert.deepEqual(
@@ -262,7 +262,7 @@ test("previous session: the newest earlier log of the same plan + exercise", () 
 test("previous session: an Alternative Today exercise only compares with the SAME alternative", () => {
   const layer = loadDataLayer({ currentUid: "uA" });
 
-  const none = layer.findPreviousLogs(LOGS, "plan-upper", "alt:slot-bench:dumbbell-bench-press", LOGS[2].date);
+  const none = layer.findPreviousLogs(LOGS, dbBench([]), LOGS[2].date);
 
   assert.equal(none.length, 0, "the barbell days are not 'previous' for a dumbbell day");
 });
@@ -271,7 +271,7 @@ test("previous session: a log is never its own previous, unfinished logs are ign
   const layer = loadDataLayer({ currentUid: "uA" });
   const draft = log("D", 2, "Upper A", [bench([[1, 1]])], { status: "in-progress" });
 
-  const found = layer.findPreviousLogs([draft, ...LOGS], "plan-upper", "slot-bench", LOGS[0].date);
+  const found = layer.findPreviousLogs([draft, ...LOGS], bench([]), LOGS[0].date);
 
   assert.deepEqual(ids(found), ["L4"]);
 });
@@ -323,8 +323,8 @@ test("after an exercise identity change, old and new exercises stay separate in 
 
   const layer = loadDataLayer({ currentUid: "uA" });
 
-  assert.equal(layer.findPreviousLogs(logs, "plan-lower", "slot-NEW", at(0)).length, 1, "only the new exercise's own log");
-  assert.equal(layer.findPreviousLogs([logs[0]], "plan-lower", "slot-NEW", at(0)).length, 0, "no Leg Press numbers as its previous");
+  assert.equal(layer.findPreviousLogs(logs, hack, at(0)).length, 1, "only the new exercise's own log");
+  assert.equal(layer.findPreviousLogs([logs[0]], hack, at(0)).length, 0, "no Leg Press numbers as its previous");
 });
 
 test("filtering by exercise survives a slot-id change for the SAME library exercise", () => {

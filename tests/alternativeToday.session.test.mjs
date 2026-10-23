@@ -102,8 +102,10 @@ function boot(world, { uid = "userA", library, pickerFails = false } = {}) {
     ...pendingWorkouts,
     ...exerciseLogging,
     getWorkoutPlan: async id => (world.plans[id] ? structuredClone(world.plans[id]) : null),
-    getPreviousWorkoutLog: async (planId, exerciseId) => {
-      world.previousCalls.push({ planId, exerciseId });
+    // Previous performance is looked up by the UNDERLYING exercise
+    // (library id / name), never by plan or plan slot.
+    getPreviousWorkoutLog: async exercise => {
+      world.previousCalls.push({ name: exercise.name, libraryExerciseId: exercise.libraryExerciseId });
       return null;
     },
     getWorkoutLogs: async () => world.logs.slice(),
@@ -521,17 +523,18 @@ test("a replacement never shares history with the original exercise", { skip }, 
   const page = await startUpperA(world);
 
   assert.deepEqual(
-    world.previousCalls.filter(c => c.planId === "p1").map(c => c.exerciseId).sort(),
-    ["e1", "e2", "e3"]
+    world.previousCalls.map(c => c.name).sort(),
+    ["Barbell Bench Press", "Cable Lateral Raise", "Lat Pulldown"]
   );
 
   world.previousCalls.length = 0;
 
   await page.chooseAlternative(0, "incline", INCLINE);
 
-  // Only the replaced exercise was looked up again, under its OWN identity.
+  // Only the replaced exercise was looked up again, under its OWN identity
+  // (the alternative's name / library id) - not the planned Bench Press.
   assert.deepEqual(world.previousCalls, [
-    { planId: "p1", exerciseId: "alt:e1:incline-dumbbell-press" }
+    { name: INCLINE, libraryExerciseId: "incline-dumbbell-press" }
   ]);
 });
 

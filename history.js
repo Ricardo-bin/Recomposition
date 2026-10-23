@@ -12,6 +12,7 @@
 // ============================================================================
 
 import { isCompletedLog } from "./workoutLogStatus.js";
+import { previousExerciseIn } from "./previousSession.js";
 
 import { auth } from "./firebase.js";
 
@@ -35,7 +36,6 @@ import {
   rangeStartKey,
   summarizeLog,
   describeExercise,
-  previousExercise,
   applySetEdits,
   pendingDisplayLogs,
   dateKey,
@@ -776,14 +776,14 @@ function renderComparison(currentSets, previousLog, previousEx) {
   `;
 }
 
-// Same lookup the active workout uses (findPreviousLogs). The loaded history is
+// Same lookup the active workout uses (previousSession.js: same underlying
+// exercise, any workout, newest earlier completed performance). The loaded history is
 // tried first; only if nothing is found there AND older pages exist does it ask
 // the data layer, which searches everything.
 async function findPreviousSession(log, exercise) {
   const local = findPreviousLogs(
     historyLogs.filter(item => item.id !== log.id),
-    log.planId,
-    exercise.exerciseId,
+    exercise,
     log.date
   )[0];
 
@@ -795,7 +795,7 @@ async function findPreviousSession(log, exercise) {
     return null;
   }
 
-  return getPreviousWorkoutLog(log.planId, exercise.exerciseId, log.date);
+  return getPreviousWorkoutLog(exercise, log.date);
 }
 
 async function fillComparisons(log, token) {
@@ -808,7 +808,7 @@ async function fillComparisons(log, token) {
     try {
 
       const previousLog = await findPreviousSession(log, exercise);
-      const previousEx = previousLog && previousExercise(previousLog, exercise.exerciseId);
+      const previousEx = previousLog && previousExerciseIn(previousLog, exercise);
 
       html = previousEx
         ? renderComparison(exercise.sets, previousLog, previousEx)

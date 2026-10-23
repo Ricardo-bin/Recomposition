@@ -8,7 +8,7 @@
 //
 // Reused, not re-implemented:
 //   - best set / estimated 1RM   progressMetrics.js (Progress's definitions)
-//   - "previous session" lookup  data/recompositionData.js findPreviousLogs
+//   - "previous session" lookup  previousSession.js (same exercise, any workout)
 //   - completed-log rule         workoutLogStatus.js (applied by history.js)
 // ============================================================================
 
@@ -72,6 +72,35 @@ export function exerciseKey(exercise) {
   return typeof libraryId === "string" && libraryId
     ? `lib:${libraryId}`
     : `name:${exerciseName(exercise).trim().toLowerCase()}`;
+}
+
+// Are these two log/plan/session exercises the same UNDERLYING exercise?
+// Same rule as exerciseKey (library id, else name), plus one bridge so a
+// timeline cannot split in two: when only ONE side is linked to the Exercise
+// Library, the names decide (an older or hand-typed entry of the same exercise
+// still belongs to the same timeline). Two exercises that are BOTH linked are
+// the same only if their library ids match - a different library exercise is
+// never merged by name. A missing name never matches anything.
+// The plan slot id is deliberately NOT used: it differs in every workout plan.
+const libraryIdOf = exercise =>
+  typeof exercise?.libraryExerciseId === "string" && exercise.libraryExerciseId
+    ? exercise.libraryExerciseId
+    : "";
+
+const identityName = exercise =>
+  String(exercise?.name || exercise?.exerciseName || "").trim().toLowerCase();
+
+export function sameExercise(a, b) {
+  const libraryA = libraryIdOf(a);
+  const libraryB = libraryIdOf(b);
+
+  if (libraryA && libraryB) {
+    return libraryA === libraryB;
+  }
+
+  const nameA = identityName(a);
+
+  return nameA !== "" && nameA === identityName(b);
 }
 
 const exercisesOf = log => (Array.isArray(log?.exercises) ? log.exercises : []);
@@ -318,11 +347,6 @@ export function describeExercise(exercise) {
     })),
     best
   };
-}
-
-// The same exercise inside a previous log (found by the exact performed id).
-export function previousExercise(previousLog, exerciseId) {
-  return exercisesOf(previousLog).find(exercise => exercise?.exerciseId === exerciseId) ?? null;
 }
 
 // Rows for a CURRENT | PREVIOUS table; the shorter side is padded with null.

@@ -410,20 +410,20 @@ test("old logs are not modified by a plan identity change, and previous performa
     docs: oldLogs.map(({ id, ...data }) => ({ id, data }))
   });
 
-  const newExercisePrevious = await layer.getPreviousWorkoutLog("plan-1", planAfter.exercises[0].id);
-  const oldExercisePrevious = await layer.getPreviousWorkoutLog("plan-1", "slot-1");
+  const newExercisePrevious = await layer.getPreviousWorkoutLog(planAfter.exercises[0]);
+  const oldExercisePrevious = await layer.getPreviousWorkoutLog(planBefore.exercises[0]);
 
   assert.equal(newExercisePrevious, null, "Hack Squat has no history: Leg Press numbers are NOT shown as its previous");
   assert.equal(oldExercisePrevious?.id, "L2", "the old exercise's history is still found, newest first");
 });
 
-test("old logs written under the old slot id still resolve for a plan that still uses it", async () => {
+test("old logs (saved with only a slot id and a name) still resolve for the same exercise", async () => {
   const layer = loadDataLayer({
     currentUid: "uA",
     docs: [{ id: "L1", data: LOG() }]
   });
 
-  assert.equal((await layer.getPreviousWorkoutLog("plan-1", "slot-1"))?.id, "L1");
+  assert.equal((await layer.getPreviousWorkoutLog({ name: "Leg Press" }))?.id, "L1");
 });
 
 
@@ -449,11 +449,11 @@ test("completed log: the previous-performance lookup ignores unfinished logs", a
     ]
   });
 
-  assert.equal((await layer.getPreviousWorkoutLog("plan-1", "slot-1"))?.id, "done");
+  assert.equal((await layer.getPreviousWorkoutLog({ name: "Leg Press" }))?.id, "done");
 });
 
-test("completed log: Dashboard, History, Progress and the data layer all use the shared check (no private copies)", () => {
-  for (const file of ["dashboard.js", "history.js", "progress.js", "data/recompositionData.js"]) {
+test("completed log: Dashboard, History, Progress and the previous-session lookup all use the shared check (no private copies)", () => {
+  for (const file of ["dashboard.js", "history.js", "progress.js", "previousSession.js"]) {
     const source = readFileSync(resolve(root, file), "utf8");
 
     assert.match(source, /isCompletedLog/, `${file} uses the shared check`);

@@ -20,6 +20,8 @@ import {
 
 import { auth } from "./firebase.js";
 
+import { previousExerciseIn } from "./previousSession.js";
+
 import {
   LOG_STATUS,
   exerciseState,
@@ -35,7 +37,6 @@ import {
 import {
   applyAlternative,
   buildLogSession,
-  getPerformedExerciseId,
   hasAlternative,
   hasEnteredData,
   libraryField,
@@ -304,8 +305,10 @@ async function loadPreviousPerformance() {
   );
 }
 
-// Previous performance follows what is actually performed: a replaced
-// exercise only ever shows earlier sessions of that same replacement.
+// Previous performance follows what is actually performed (the session
+// exercise's name / library id are the alternative's while one is active), so a
+// replaced exercise only ever shows earlier sessions of that same exercise -
+// from any workout day.
 const PREVIOUS_LOOKUP_TIMEOUT_MS = 4000;
 
 async function loadPreviousForExercise(exercise) {
@@ -323,11 +326,10 @@ async function loadPreviousForExercise(exercise) {
     try {
       exercise.previousLog =
         await Promise.race([
+          // By the underlying exercise (library id / name), never by plan or
+          // plan-slot: the same exercise on another workout day counts.
           getPreviousWorkoutLog(
-            currentWorkoutSession.planId,
-            getPerformedExerciseId(
-              exercise
-            ),
+            exercise,
             currentWorkoutSession.date
           ),
           new Promise(resolve => {
@@ -895,12 +897,9 @@ function renderPreviousPerformance(
 
 
   const previousExercise =
-    exercise.previousLog.exercises?.find(
-      item =>
-        item.exerciseId ===
-        getPerformedExerciseId(
-          exercise
-        )
+    previousExerciseIn(
+      exercise.previousLog,
+      exercise
     );
 
 
@@ -1155,12 +1154,9 @@ function getPreviousSet(
   }
 
   const previousExercise =
-    exercise.previousLog.exercises?.find(
-      item =>
-        item.exerciseId ===
-        getPerformedExerciseId(
-          exercise
-        )
+    previousExerciseIn(
+      exercise.previousLog,
+      exercise
     );
 
   if (

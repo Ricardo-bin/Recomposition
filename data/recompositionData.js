@@ -20,7 +20,7 @@ import {
 
 import { db, auth } from "../firebase.js";
 
-import { isCompletedLog } from "../workoutLogStatus.js";
+import { findPreviousSessions } from "../previousSession.js";
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,80 +317,44 @@ export async function getWorkoutLog(logId) {
   };
 }
 
+// Previous session of an UNDERLYING EXERCISE (not of a plan slot): the newest
+// earlier completed workout, of ANY workout/plan, holding a completed
+// performance of the same exercise. `exercise` is any plan/session/log
+// exercise ({ name, libraryExerciseId }); see previousSession.js.
 export async function getPreviousWorkoutLog(
-  planId,
-  exerciseId,
+  exercise,
   beforeDate = null
 ) {
   const firstPage = await getWorkoutLogsPage();
 
-  let previousLogs = findPreviousLogs(
+  let matches = findPreviousSessions(
     firstPage.logs,
-    planId,
-    exerciseId,
+    exercise,
     beforeDate
   );
 
-  // Nothing in the most recent page, but older logs exist:
-  // this plan/exercise may simply not have been trained recently.
-  if (previousLogs.length === 0 && firstPage.hasMore) {
-    previousLogs = findPreviousLogs(
+  // The first page is the newest logs, so any match there is newer than every
+  // log outside it. Only when it holds none (and older logs exist) the whole
+  // history is searched.
+  if (matches.length === 0 && firstPage.hasMore) {
+    matches = findPreviousSessions(
       await getAllWorkoutLogs(),
-      planId,
-      exerciseId,
+      exercise,
       beforeDate
     );
   }
 
-  if (previousLogs.length === 0) {
-    return null;
-  }
-
-  // Logs are newest-first, so the first match is the previous session.
-  return previousLogs[0];
+  return matches[0]?.log ?? null;
 }
 
-
+// Pure selection, re-exported so History reuses the exact same rule.
 export function findPreviousLogs(
   logs,
-  planId,
-  exerciseId,
+  exercise,
   beforeDate
 ) {
-  return logs.filter(log => {
-    // Must belong to the same workout plan.
-    if (log.planId !== planId) {
-      return false;
-    }
-
-    if (!isCompletedLog(log)) {
-      return false;
-    }
-
-    // If we're looking before a particular session,
-    // don't include that session or anything newer.
-    if (beforeDate && log.date) {
-      const logDate = new Date(log.date.toDate
-        ? log.date.toDate()
-        : log.date);
-
-      const comparisonDate = new Date(
-        beforeDate.toDate
-          ? beforeDate.toDate()
-          : beforeDate
-      );
-
-      if (logDate >= comparisonDate) {
-        return false;
-      }
-    }
-
-    // The workout must contain this exercise.
-    return Array.isArray(log.exercises) &&
-      log.exercises.some(
-        exercise => exercise.exerciseId === exerciseId
-      );
-    });
+  return findPreviousSessions(logs, exercise, beforeDate)
+    .map(match => match.log);
 }
 
 export async function updateWorkoutLog(logId, data) {

@@ -8,6 +8,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { isCompletedLog } from "../../workoutLogStatus.js";
+import { findPreviousSessions } from "../../previousSession.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -40,7 +41,8 @@ export function loadDataLayer({ currentUid, docs = [] }) {
     setDoc: async (path, data) => { calls.set.push({ path, data }); },
     db: {},
     auth: { currentUser: currentUid ? { uid: currentUid } : null },
-    isCompletedLog
+    isCompletedLog,
+    findPreviousSessions
   };
 
   const api = new Function(
